@@ -10,6 +10,7 @@
 import { captureUrl } from './handoff.js';
 import { markerLayout } from './fiducials.js';
 import { renderCalibration } from './pattern.js';
+import { joinCalibration } from './calibration-sync.js';
 import { screensInNumberOrder } from './screens.js';
 
 const SESSION_KEY = 'seamscape-calibration';
@@ -54,6 +55,7 @@ function sameScreen(a, b) {
 function closeOverlay() {
   if (!overlay) return;
   window.removeEventListener('resize', overlay.draw);
+  overlay.sync.leave();
   overlay.el.remove();
   overlay = null;
 }
@@ -108,18 +110,21 @@ export async function openOnAllScreens(details, monitors, screensText) {
   root.append(canvas, bar);
   document.body.append(root);
   const o = {
-    el: root, bar, monitor: here, others, screensText,
+    el: root, bar, monitor: here, others, screensText, sync: null,
     draw: () => {
       const state = renderCalibration(canvas, {
         monitor: here,
         count: monitors.length,
         qrText: captureUrl(location.origin, screensText),
         full: document.fullscreenElement === root,
+        others: o.sync?.available ? o.sync.states : null,
       });
       root.dataset.state = state;
+      o.sync?.set(state);
       renderBlocked(o);
     },
   };
+  o.sync = joinCalibration(screensText, here.n, () => overlay === o && o.draw());
   overlay = o;
   window.addEventListener('resize', o.draw);
   root.addEventListener('fullscreenchange', () => {

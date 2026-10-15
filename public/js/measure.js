@@ -107,7 +107,8 @@ export function measureLayout(screensInfo, detections, photo) {
 
   const missing = per.filter((r) => r.status === 'missing').map((r) => r.n);
   if (missing.length) {
-    problems.push(`${missing.length === 1 ? 'Monitor' : 'Monitors'} ${list(missing.map(String))} ${missing.length === 1 ? 'is' : 'are'} not in the photo. Step back so every screen fits.`);
+    const one = missing.length === 1;
+    problems.push(`No markers found on ${one ? 'monitor' : 'monitors'} ${list(missing.map(String))}. Check that ${one ? 'it shows' : 'each shows'} the black square markers: if a screen says “Click to fill”, click it on your computer. Then make sure every screen is in the photo.`);
   }
   for (const r of per) {
     if (r.status === 'missing') continue;

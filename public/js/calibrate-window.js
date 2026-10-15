@@ -3,6 +3,7 @@
 
 import { captureUrl, decodeScreens, screensFromHash } from './handoff.js';
 import { renderCalibration } from './pattern.js';
+import { joinCalibration } from './calibration-sync.js';
 
 const canvas = document.querySelector('#pattern');
 
@@ -13,7 +14,7 @@ function parse() {
   try {
     const info = decodeScreens(text);
     const monitor = info.monitors.find((m) => m.n === n);
-    return monitor ? { monitor, count: info.monitors.length, qrText: captureUrl(location.origin, text) } : null;
+    return monitor ? { monitor, count: info.monitors.length, text, qrText: captureUrl(location.origin, text) } : null;
   } catch {
     return null;
   }
@@ -21,9 +22,16 @@ function parse() {
 
 const job = parse();
 
+let sync = null;
+
 function draw() {
-  const state = renderCalibration(canvas, { ...job, full: !!document.fullscreenElement });
+  const state = renderCalibration(canvas, {
+    ...job,
+    full: !!document.fullscreenElement,
+    others: sync?.available ? sync.states : null,
+  });
   document.body.dataset.state = state;
+  sync?.set(state);
 }
 
 async function fill() {
@@ -40,6 +48,7 @@ if (!job) {
   document.querySelector('#message').hidden = false;
 } else {
   document.title = `Seamscape calibration: monitor ${job.monitor.n}`;
+  sync = joinCalibration(job.text, job.monitor.n, draw);
   draw();
   document.fonts?.load('800 100px Archivo').then(draw).catch(() => {});
   window.addEventListener('resize', draw);

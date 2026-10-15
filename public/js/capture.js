@@ -182,7 +182,7 @@ function drawPhoto(canvas, source, result, found) {
 }
 
 function screenLine(s) {
-  if (s.status === 'missing') return 'Not in the photo';
+  if (s.status === 'missing') return 'No markers found';
   const found = `${s.found.length} of 8 markers`;
   if (s.status === 'partial') return s.cut.length ? `Cut off on the ${s.cut.join(' and ')} (${found})` : `Hard to read (${found})`;
   return s.cut.length ? `Measured, partly cut off (${found})` : `Measured (${found})`;

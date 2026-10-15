@@ -9,6 +9,7 @@ const INK = '#111111';
 const SOFT = '#45484d';
 const MAGENTA = '#d1006c';
 const WHITE = '#ffffff';
+const RULE_SOFT = '#d4d4ce';
 const FONT = 'Archivo, system-ui, sans-serif';
 
 // Size the canvas backing store to the device pixels it covers.
@@ -53,10 +54,36 @@ function fitText(ctx, text, weight, size, maxW, stretch = '') {
   return s;
 }
 
+// In the QR code's place: what still has to happen before scanning.
+function drawPending(ctx, pending, x, y, w, h, cell) {
+  const rowSize = Math.max(cell * 0.75, 16);
+  const titleSize = Math.max(cell * 1.1, 22);
+  const rowH = rowSize * 2.4;
+  const rule = Math.max(1, cell / 18);
+  let top = y + Math.max(0, (h - (titleSize * 1.8 + pending.length * rowH)) / 2);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = INK;
+  ctx.font = `650 ${Math.round(titleSize)}px ${FONT}`;
+  ctx.fillText('Before you scan', x, top + titleSize, w);
+  top += titleSize * 1.8;
+  ctx.fillRect(x, top, w, rule);
+  ctx.font = `500 ${Math.round(rowSize)}px ${FONT}`;
+  for (const line of pending) {
+    ctx.fillStyle = INK;
+    ctx.fillText(line, x, top + rowH * 0.62, w);
+    top += rowH;
+    ctx.fillStyle = RULE_SOFT;
+    ctx.fillRect(x, top, w, rule);
+  }
+  ctx.textAlign = 'center';
+}
+
 // opts: { monitor: { n, w, h, primary }, count, qrText, markers: boolean,
-//         headline, lines: [string] }
-// With markers false the pattern shows only the number and the headline
+//         headline, lines: [string], pending: [string] }
+// With markers false the pattern shows only the number and a large headline
 // (used until the window fills its screen, so nobody photographs a wrong scale).
+// On the primary, pending lists the screens that are not ready yet; it takes
+// the QR code's place so nobody scans before every screen shows its markers.
 export function drawPattern(canvas, opts) {
   const { monitor: m, count, qrText, markers = true } = opts;
   const ctx = canvas.getContext('2d');
@@ -99,7 +126,7 @@ export function drawPattern(canvas, opts) {
   const headline = opts.headline || `Monitor ${m.n} of ${count}`;
   const lines = opts.lines || [];
   const numSize = fitText(ctx, String(m.n), 800, Math.min(box.h * 0.5, textW * 0.6), textW, 'expanded ');
-  const headSize = fitText(ctx, headline, 650, Math.max(cell * 0.9, 18), textW);
+  const headSize = fitText(ctx, headline, 650, markers ? Math.max(cell * 0.9, 18) : Math.max(cell * 1.8, 28), textW);
   const lineSize = Math.max(cell * 0.7, 14);
   const block = numSize * 0.8 + headSize * 1.6 + lines.length * lineSize * 1.5;
   let y = box.y + Math.max(0, (box.h - block) / 2) + numSize * 0.75;
@@ -118,7 +145,10 @@ export function drawPattern(canvas, opts) {
     ctx.fillText(line, cx, y, textW);
   }
 
-  if (showQr) {
+  const pending = opts.pending || [];
+  if (showQr && pending.length) {
+    drawPending(ctx, pending, box.x + textW + gutter, box.y, qrSize, box.h, cell);
+  } else if (showQr) {
     const qx = box.x + textW + gutter;
     const qy = box.y + (box.h - qrSize) / 2;
     drawQr(ctx, qrText, qx, qy, qrSize);
@@ -128,18 +158,27 @@ export function drawPattern(canvas, opts) {
 
 // The whole calibration window for monitor m: the pattern once the canvas
 // fills the monitor, otherwise what to do to get there.
-// opts: { monitor, count, qrText, full } with full = the canvas is in full screen.
-export function renderCalibration(canvas, { monitor: m, count, qrText, full }) {
+// opts: { monitor, count, qrText, full, others } with full = the canvas is in
+// full screen and others = Map of other monitor numbers to their window state
+// (calibration-sync.js), or null when the windows cannot talk to each other.
+export function renderCalibration(canvas, { monitor: m, count, qrText, full, others = null }) {
   fitCanvas(canvas);
   if (full && coversMonitor(canvas, m)) {
-    drawPattern(canvas, {
-      monitor: m,
-      count,
-      qrText,
-      lines: m.primary
-        ? ['Scan the code with your phone’s camera, then photograph all your screens.', 'Press Esc when your phone has measured them.']
-        : ['Keep this showing until your phone has measured your screens.', 'Press Esc to close.'],
-    });
+    const pending = [];
+    if (m.primary && others) {
+      for (let n = 1; n <= count; n++) {
+        if (n === m.n) continue;
+        const state = others.get(n);
+        if (state === 'waiting') pending.push(`Monitor ${n}: click its window to fill the screen.`);
+        else if (state === 'wrong-screen') pending.push(`Monitor ${n}: its window is on the wrong screen.`);
+        else if (state !== 'pattern') pending.push(`Monitor ${n}: no calibration window is open.`);
+      }
+    }
+    let lines;
+    if (!m.primary) lines = ['Keep this showing until your phone has measured your screens.', 'Press Esc to close.'];
+    else if (pending.length) lines = ['Every screen must show its black markers before you scan.', 'The code appears here when they do.'];
+    else lines = ['Scan the code with your phone’s camera, then photograph all your screens.', 'Press Esc when your phone has measured them.'];
+    drawPattern(canvas, { monitor: m, count, qrText, pending, lines });
     return 'pattern';
   }
   if (full) {

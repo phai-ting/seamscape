@@ -201,7 +201,7 @@ test('measureLayout reports a missing monitor and an empty photo', () => {
   const desk = makeDesk(LAYOUTS['three monitors']);
   const res = measureLayout(desk.info, detections(desk, { keep: (n) => n !== 2 }), desk.photo);
   assert.equal(res.ok, false);
-  assert.match(res.problems.join(' '), /Monitor 2 is not in the photo/);
+  assert.match(res.problems.join(' '), /No markers found on monitor 2\./);
   const none = measureLayout(desk.info, [], desk.photo);
   assert.match(none.problems[0], /No calibration markers/);
 });
