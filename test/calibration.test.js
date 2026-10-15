@@ -8,7 +8,7 @@ import {
 } from '../public/js/handoff.js';
 import { physicalLayout } from '../public/js/layout.js';
 import { decodeProfile, encodeProfile } from '../public/js/profile.js';
-import { detections, expectedEdges, makeDesk } from './fixtures/desk.js';
+import { detections, expectedEdges, makeCurvedDesk, makeDesk } from './fixtures/desk.js';
 
 const near = (a, b, eps, what = '') => assert.ok(Math.abs(a - b) <= eps, `${what} ${a} != ${b} (±${eps})`);
 
@@ -170,8 +170,8 @@ for (const [name, setup] of Object.entries(LAYOUTS)) {
 test('measureLayout copes with pixel noise and a bad marker', () => {
   const desk = makeDesk(LAYOUTS['three monitors']);
   const dets = detections(desk, { noise: 1.5, seed: 7 });
-  // A glare-damaged read: right id, corners pushed 30 px off.
-  dets.find((d) => d.id === markerId(2, 6)).corners.forEach((c) => { c[0] += 30; c[1] -= 20; });
+  // A misread: a marker reported far from where it really is.
+  dets.find((d) => d.id === markerId(2, 6)).corners.forEach((c) => { c[0] += 300; c[1] -= 200; });
   const res = measureLayout(desk.info, dets, desk.photo);
   assert.equal(res.ok, true, res.problems.join(' / '));
   const want = expectedEdges(desk);
@@ -180,6 +180,24 @@ test('measureLayout copes with pixel noise and a bad marker', () => {
     near(e.shift, want[i].shift, 1.5, 'shift');
   });
   assert.ok(!res.screens[1].found.includes(6), 'the damaged marker is dropped');
+});
+
+test('measureLayout keeps every marker on curved monitors and measures their gaps', () => {
+  const desk = makeCurvedDesk([
+    { w: 2560, h: 1440, x: -2560, y: 0, X: -617.7, Y: 4, PW: 597.7 },
+    { w: 2560, h: 1440, x: 0, y: 0, primary: true, X: 0, Y: 0, PW: 597.7 },
+    { w: 2560, h: 1440, x: 2560, y: 0, X: 614.7, Y: -6, PW: 597.7 },
+  ], { radius: 1500 });
+  const res = measureLayout(desk.info, detections(desk, { noise: 0.8, seed: 5 }), desk.photo);
+  assert.equal(res.ok, true, res.problems.join(' / '));
+  for (const s of res.screens) assert.equal(s.found.length, 8, `monitor ${s.n} kept every marker`);
+  assert.match(res.notes.join(' '), /not flat in the photo/);
+  const want = expectedEdges(desk);
+  res.profile.edges.forEach((e, i) => {
+    near(e.gap, want[i].gap, 1.5, `gap ${e.a}-${e.b}`);
+    near(e.shift, want[i].shift, 1.5, `shift ${e.a}-${e.b}`);
+  });
+  for (const m of res.profile.monitors) near(m.pw, 597.7, 6, `monitor ${m.n} width`);
 });
 
 test('measureLayout tells the user which monitor is cut off', () => {

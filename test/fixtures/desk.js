@@ -41,9 +41,10 @@ export function detections(desk, { noise = 0, seed = 1, keep = () => true } = {}
   };
   const out = [];
   for (const sc of desk.screens) {
+    const project = sc.map || ((c) => applyH(sc.G, c));
     for (const m of markerLayout(sc.w, sc.h).markers) {
       const corners = m.corners.map((c) => {
-        const [x, y] = applyH(sc.G, c);
+        const [x, y] = project(c);
         return [x + noise * rand(), y + noise * rand()];
       });
       const inside = corners.every(([x, y]) => x >= 0 && y >= 0 && x < desk.photo.width && y < desk.photo.height);
@@ -51,6 +52,38 @@ export function detections(desk, { noise = 0, seed = 1, keep = () => true } = {}
     }
   }
   return out;
+}
+
+// Curved monitors (radius in mm, e.g. 1800R) in a row, photographed by a
+// pinhole camera from the seat. Each screen bends about its own vertical
+// centre line, edges towards the viewer. X, Y, PW are measured along the
+// screen surface, as a spec sheet would give them.
+export function makeCurvedDesk(setup, { radius = 1800, distance = 800, photoW = 4000, photoH = 3000 } = {}) {
+  const rects = setup.map((s) => ({ X: s.X, Y: s.Y, PW: s.PW, PH: (s.PW * s.h) / s.w }));
+  const x0 = Math.min(...rects.map((r) => r.X)), x1 = Math.max(...rects.map((r) => r.X + r.PW));
+  const y0 = Math.min(...rects.map((r) => r.Y)), y1 = Math.max(...rects.map((r) => r.Y + r.PH));
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const f = (0.8 * photoW * distance) / (x1 - x0);
+  const screens = setup.map((s, i) => {
+    const r = rects[i];
+    const mid = r.X + r.PW / 2;
+    // Edge points sit where a flat screen's would; the middle bows away.
+    const sag = radius * (1 - Math.cos(r.PW / 2 / radius));
+    const map = ([x, y]) => {
+      const arc = (x / s.w - 0.5) * r.PW;
+      const X = mid + radius * Math.sin(arc / radius) * (r.PW / 2) / (radius * Math.sin(r.PW / 2 / radius));
+      const Z = distance + sag - radius * (1 - Math.cos(arc / radius));
+      const Y = r.Y + (y / s.h) * r.PH;
+      return [photoW / 2 + (f * (X - cx)) / Z, photoH / 2 + (f * (Y - cy)) / Z];
+    };
+    return { n: i + 1, w: s.w, h: s.h, x: s.x, y: s.y, primary: !!s.primary, map };
+  });
+  const primary = setup.find((s) => s.primary);
+  const info = {
+    refMm: primary.PW,
+    monitors: screens.map(({ n, w, h, x, y, primary: p }) => ({ n, w, h, x, y, primary: p })),
+  };
+  return { info, screens, rects, photo: { width: photoW, height: photoH } };
 }
 
 // The gaps and offsets the measurement should find, in defaultEdges order.

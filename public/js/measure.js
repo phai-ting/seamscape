@@ -5,8 +5,13 @@
 // to the corners of its markers. Mapping every screen through the primary's
 // inverse puts all of them in the primary's pixel space: one physical canvas.
 // Millimetres come from the primary's physical width, which the desktop sends.
+//
+// Curved monitors are not flat, so one homography per screen cannot fit all
+// of its markers. Each edge is therefore placed from the markers along that
+// edge (left column, right column, top row, bottom row), which are close to
+// flat; the whole-screen fit is only used to judge the photo.
 
-import { applyH, fitRobust, invertH, multiplyH } from './homography.js';
+import { applyH, fitRobust, invertH, multiplyH, solveHomography } from './homography.js';
 import { markerLayout, markerOwner, MARKERS_PER_SCREEN } from './fiducials.js';
 import { buildProfile, halfMm } from './handoff.js';
 import { defaultEdges } from './layout.js';
@@ -14,6 +19,9 @@ import { defaultEdges } from './layout.js';
 // Row and column of each marker position on the 3 x 3 grid of the screen.
 const ROW = [0, 0, 2, 2, 0, 1, 2, 1];
 const COL = [0, 2, 2, 0, 1, 2, 1, 0];
+
+// Marker positions along each edge of a screen.
+const SIDES = { left: [0, 7, 3], right: [1, 5, 2], top: [0, 4, 1], bottom: [3, 6, 2] };
 
 function quadArea(q) {
   let a = 0;
@@ -60,7 +68,7 @@ function offSides(points, photo) {
 // Fit one screen. Returns its status and, when usable, its homography.
 function analyseScreen(screen, found, photo) {
   const lay = markerLayout(screen.w, screen.h);
-  const result = { n: screen.n, found: [], missing: [], status: 'missing', G: null, error: 0, cut: [] };
+  const result = { n: screen.n, found: [], missing: [], status: 'missing', G: null, groups: [], error: 0, cut: [] };
   if (found.length === 0) {
     result.missing = lay.markers.map((m) => m.pos);
     return result;
@@ -71,8 +79,11 @@ function analyseScreen(screen, found, photo) {
     dst: d.corners,
   }));
   const cellPx = Math.max(...found.map((d) => sideLength(d.corners))) / 6;
-  const fit = fitRobust(groups, { tolerance: Math.max(1.5, 0.2 * cellPx), minGroups: 2 });
+  // Only a misread lands cells away from where the others predict it; a
+  // curved screen or a wide lens bends a marker by a cell or so, not more.
+  const fit = fitRobust(groups, { tolerance: Math.max(3, 3 * cellPx), minGroups: 2 });
   result.G = fit.H;
+  result.groups = fit.kept;
   result.error = fit.error / cellPx; // in marker cells: comparable across photos
   result.found = fit.kept.map((g) => g.key).sort((a, b) => a - b);
   result.missing = lay.markers.map((m) => m.pos).filter((p) => !result.found.includes(p));
@@ -85,6 +96,18 @@ function analyseScreen(screen, found, photo) {
   const cols = new Set(result.found.map((p) => COL[p]));
   result.status = result.found.length >= 3 && rows.size >= 2 && cols.size >= 2 ? 'ok' : 'partial';
   return result;
+}
+
+// A homography from the markers along one edge, or the whole-screen fit when
+// fewer than two of them were found.
+function sideFit(r, side) {
+  const along = r.groups.filter((g) => SIDES[side].includes(g.key));
+  if (along.length < 2) return r.G;
+  try {
+    return solveHomography(along.flatMap((g) => g.src), along.flatMap((g) => g.dst));
+  } catch {
+    return r.G;
+  }
 }
 
 // screensInfo: { refMm, monitors: [{ n, w, h, x, y, primary }] } (handoff.decodeScreens)
@@ -120,25 +143,36 @@ export function measureLayout(screensInfo, detections, photo) {
       notes.push(`Monitor ${r.n} is partly cut off on the ${list(r.cut)}, but its other markers were enough to measure it.`);
     }
     if (r.status === 'ok' && r.error > 0.35) {
-      notes.push(`Monitor ${r.n} looks bent in the photo. If the result seems off, retake it with the main camera (1×), not the wide lens.`);
+      notes.push(`Monitor ${r.n} is not flat in the photo: a curved screen, or a wide lens. Its edges were measured from the markers next to each edge.`);
     }
   }
   if (problems.length) return { ok: false, screens: per, problems, notes, profile: null, rects: null };
 
-  // Every screen into the primary's pixel space.
+  // Every screen into the primary's pixel space, edge by edge.
   const ref = screens.find((s) => s.primary);
-  const refFit = per.find((r) => r.n === ref.n);
-  const toRef = invertH(refFit.G);
-  const mmPerPx = refMm / ref.w;
+  const toRef = invertH(per.find((r) => r.n === ref.n).G);
+  const edgesOf = (s) => {
+    const r = per.find((p) => p.n === s.n);
+    const at = (side, ends) => {
+      const P = multiplyH(toRef, sideFit(r, side));
+      return ends.map((c) => applyH(P, c));
+    };
+    const [l0, l1] = at('left', [[0, 0], [0, s.h]]);
+    const [r0, r1] = at('right', [[s.w, 0], [s.w, s.h]]);
+    const [t0, t1] = at('top', [[0, 0], [s.w, 0]]);
+    return { left: (l0[0] + l1[0]) / 2, right: (r0[0] + r1[0]) / 2, top: (t0[1] + t1[1]) / 2 };
+  };
+  const refEdges = edgesOf(ref);
+  const mmPerPx = refMm / (refEdges.right - refEdges.left);
   const rects = screens.map((s) => {
-    const P = multiplyH(toRef, per.find((r) => r.n === s.n).G);
-    const quad = [[0, 0], [s.w, 0], [s.w, s.h], [0, s.h]].map((c) => applyH(P, c));
-    const scale = s === ref ? 1 : Math.sqrt(Math.abs(quadArea(quad)) / (s.w * s.h));
-    const [cx, cy] = s === ref ? [s.w / 2, s.h / 2] : applyH(P, [s.w / 2, s.h / 2]);
-    const w = s.w * scale * mmPerPx, h = s.h * scale * mmPerPx;
+    const e = edgesOf(s);
+    const quad = [[0, 0], [s.w, 0], [s.w, s.h], [0, s.h]]
+      .map((c) => applyH(multiplyH(toRef, per.find((r) => r.n === s.n).G), c));
+    const w = (e.right - e.left) * mmPerPx;
+    const h = (w * s.h) / s.w;
     const top = Math.atan2(quad[1][1] - quad[0][1], quad[1][0] - quad[0][0]);
     const bottom = Math.atan2(quad[2][1] - quad[3][1], quad[2][0] - quad[3][0]);
-    return { n: s.n, x: cx * mmPerPx - w / 2, y: cy * mmPerPx - h / 2, w, h, tilt: ((top + bottom) / 2) * (180 / Math.PI), quad };
+    return { n: s.n, x: e.left * mmPerPx, y: e.top * mmPerPx, w, h, tilt: ((top + bottom) / 2) * (180 / Math.PI), quad };
   });
 
   for (const r of rects) {
