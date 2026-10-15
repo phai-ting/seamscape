@@ -9,7 +9,7 @@ import { hashForProfile, profileFromHash } from './profile.js';
 import { currentScreen, detectScreens, hasWindowManagement, windowManagementPermission } from './screens.js';
 import { drawTestPattern } from './testpattern.js';
 import { buildZip, FORMATS, saveBlob } from './export.js';
-import { detectOS } from './howto.js';
+import { detectOS, howToGuide, OS_LABELS, OSES } from './howto.js';
 
 const DEFAULT_GAP = 20;
 const PREVIEW_MAX = 2400;
@@ -427,6 +427,7 @@ function updateDerived() {
     if (cell) cell.textContent = `${Math.round(r.w)} × ${Math.round(r.h)} mm`;
   }
   drawPreview();
+  renderGuides();
 
   clearTimeout(hashTimer);
   hashTimer = setTimeout(() => {
@@ -435,12 +436,47 @@ function updateDerived() {
   }, 250);
 }
 
+// ---------- how to apply ----------
+
+function selectedOses() {
+  return [...document.querySelectorAll('input[name="os"]:checked')].map((i) => i.value);
+}
+
+function renderGuide(os, plan, ext) {
+  const guide = howToGuide(os, plan, ext);
+  const parts = [
+    el('h3', {}, OS_LABELS[os]),
+    el('ul', { className: 'files' }, ...guide.files.map((f) => el('li', {},
+      el('code', {}, f.name), el('span', { className: 'muted' }, f.desc)))),
+  ];
+  for (const b of guide.blocks) {
+    if (b.type === 'heading') parts.push(el('h4', {}, b.text));
+    else if (b.type === 'p') parts.push(el('p', {}, b.text));
+    else if (b.type === 'steps') parts.push(el('ol', {}, ...b.items.map((t) => el('li', {}, t))));
+    else if (b.type === 'code') parts.push(el('pre', {}, el('code', {}, b.lines.join('\n'))));
+  }
+  return el('div', { className: 'guide' }, ...parts);
+}
+
+function renderGuides() {
+  const box = $('#apply-guides');
+  const oses = OSES.filter((os) => selectedOses().includes(os));
+  if (oses.length === 0) {
+    box.replaceChildren(el('p', { className: 'muted' }, 'Pick an operating system under Download to see the steps.'));
+    return;
+  }
+  const { phys } = layout();
+  const plan = outputPlan(state.monitors, phys, state.picture, state.view);
+  const ext = FORMATS[$('#format').value].ext;
+  box.replaceChildren(...oses.map((os) => renderGuide(os, plan, ext)));
+}
+
 // ---------- download ----------
 
 async function download() {
   const btn = $('#download-btn');
   const status = $('#download-status');
-  const oses = [...document.querySelectorAll('input[name="os"]:checked')].map((i) => i.value);
+  const oses = selectedOses();
   if (oses.length === 0) {
     setStatus(status, 'Pick at least one operating system.', 'error');
     return;
@@ -503,6 +539,8 @@ async function init() {
     updateDerived();
   });
   $('#download-btn').addEventListener('click', download);
+  document.querySelectorAll('input[name="os"]').forEach((i) => i.addEventListener('change', renderGuides));
+  $('#format').addEventListener('change', renderGuides);
   $('#copy-btn').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText($('#profile-link').value);

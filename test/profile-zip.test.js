@@ -4,7 +4,7 @@ import {
   encodeProfile, decodeProfile, profileFromHash, hashForProfile,
 } from '../public/js/profile.js';
 import { crc32, createZip } from '../public/js/zip.js';
-import { zipManifest, detectOS } from '../public/js/howto.js';
+import { zipManifest, detectOS, howToGuide, howToText } from '../public/js/howto.js';
 
 const profile = {
   monitors: [
@@ -100,4 +100,20 @@ test('detectOS', () => {
   assert.equal(detectOS('Win32'), 'windows');
   assert.equal(detectOS('Linux x86_64'), 'linux');
   assert.equal(detectOS('macOS'), 'macos');
+});
+
+test('howToGuide lists the right files per OS, and the text matches it', () => {
+  const plan = {
+    span: { w: 4920, h: 2160 },
+    perMonitor: [{ n: 1, name: 'left', w: 1080, h: 1920 }, { n: 2, name: 'right', w: 3840, h: 2160 }],
+  };
+  assert.deepEqual(howToGuide('windows', plan, 'png').files.map((f) => f.name), ['seamscape-span.png']);
+  assert.deepEqual(howToGuide('macos', plan, 'png').files.map((f) => f.name),
+    ['seamscape-1-left.png', 'seamscape-2-right.png']);
+  assert.equal(howToGuide('linux', plan, 'jpg').files.length, 3);
+
+  const win = howToText('windows', plan, 'png');
+  assert.match(win, /\r\n5\. Set "Choose a fit for your desktop image" to Span\./);
+  assert.ok(!howToText('linux', plan, 'png').includes('\r'));
+  assert.match(howToText('linux', plan, 'png'), /\n {2}feh --no-xinerama --bg-fill seamscape-span\.png\n/);
 });

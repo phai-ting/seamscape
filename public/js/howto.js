@@ -1,4 +1,6 @@
-// Text for the HOW-TO-APPLY.txt files in the ZIP. Pure functions only.
+// How to apply the wallpaper on each OS. One structured guide feeds both the
+// HOW-TO-APPLY.txt files in the ZIP and the instructions shown on the page.
+// Pure functions only.
 
 import { monitorFileName } from './crop.js';
 
@@ -16,87 +18,122 @@ export function detectOS(platform = '') {
   return 'windows';
 }
 
-function monitorLines(plan, ext) {
-  return plan.perMonitor.map(
-    (p) => `  ${monitorFileName(p, ext)}  ->  monitor ${p.n} (${p.name}, ${p.w} x ${p.h})`,
-  );
+const REBUILD_NOTE = 'If you move a monitor, change its resolution or scaling, or rearrange the '
+  + 'displays in your OS settings, open your Seamscape bookmark and build again.';
+
+function spanFile(plan, ext) {
+  return { name: `${SPAN_NAME}.${ext}`, desc: `all monitors (${plan.span.w} x ${plan.span.h})` };
 }
 
-const REBUILD_NOTE = [
-  'If you move a monitor, change its resolution or scaling, or rearrange the',
-  'displays in your OS settings, open your Seamscape bookmark and build again.',
-];
+function monitorFiles(plan, ext) {
+  return plan.perMonitor.map((p) => ({
+    name: monitorFileName(p, ext),
+    desc: `monitor ${p.n} (${p.name}, ${p.w} x ${p.h})`,
+  }));
+}
 
-export function howToText(os, plan, ext) {
+// Guide: { title, files: [{ name, desc }], blocks }
+// blocks: { type: 'heading' | 'p', text } | { type: 'steps', items } | { type: 'code', lines }
+export function howToGuide(os, plan, ext) {
   const span = `${SPAN_NAME}.${ext}`;
   if (os === 'windows') {
-    return [
-      'Seamscape wallpaper for Windows',
-      '===============================',
-      '',
-      `File: ${span}  (${plan.span.w} x ${plan.span.h}, covers all monitors)`,
-      '',
-      '1. Copy the file somewhere it will stay (for example Pictures).',
-      '2. Open Settings > Personalization > Background.',
-      '3. Set "Personalize your background" to Picture and click "Browse photos".',
-      `4. Pick ${span}.`,
-      '5. Set "Choose a fit for your desktop image" to Span.',
-      '',
-      'Span lays the image over the monitor arrangement from Settings > System >',
-      'Display, so keep that arrangement as it was when you built this wallpaper.',
-      '',
-      ...REBUILD_NOTE,
-      '',
-    ].join('\r\n');
+    return {
+      title: 'Seamscape wallpaper for Windows',
+      files: [spanFile(plan, ext)],
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Copy the file somewhere it will stay (for example Pictures).',
+            'Open Settings > Personalization > Background.',
+            'Set "Personalize your background" to Picture and click "Browse photos".',
+            `Pick ${span}.`,
+            'Set "Choose a fit for your desktop image" to Span.',
+          ],
+        },
+        {
+          type: 'p',
+          text: 'Span lays the image over the monitor arrangement from Settings > System > Display, '
+            + 'so keep that arrangement as it was when you built this wallpaper.',
+        },
+        { type: 'p', text: REBUILD_NOTE },
+      ],
+    };
   }
   if (os === 'macos') {
-    return [
-      'Seamscape wallpaper for macOS',
-      '=============================',
-      '',
-      'One image per display:',
-      ...monitorLines(plan, ext),
-      '',
-      '1. Copy the files somewhere they will stay (for example Pictures).',
-      '2. Open System Settings > Wallpaper.',
-      '3. Drag the System Settings window onto the display you want to set.',
-      '4. Click "Add Photo..." and pick the file for that display.',
-      '5. Set the fit to "Fill Screen".',
-      '6. Repeat for each display.',
-      '',
-      'The name says where the display sits (left, center, right, top, ...)',
-      'and its number matches the number Seamscape showed for it.',
-      '',
-      ...REBUILD_NOTE,
-      '',
-    ].join('\n');
+    return {
+      title: 'Seamscape wallpaper for macOS',
+      files: monitorFiles(plan, ext),
+      blocks: [
+        {
+          type: 'steps',
+          items: [
+            'Copy the files somewhere they will stay (for example Pictures).',
+            'Open System Settings > Wallpaper.',
+            'Drag the System Settings window onto the display you want to set.',
+            'Click "Add Photo..." and pick the file for that display.',
+            'Set the fit to "Fill Screen".',
+            'Repeat for each display.',
+          ],
+        },
+        {
+          type: 'p',
+          text: 'Each file name says where its display sits (left, center, right, top, ...), '
+            + 'and its number matches the number Seamscape showed for that display.',
+        },
+        { type: 'p', text: REBUILD_NOTE },
+      ],
+    };
   }
-  return [
-    'Seamscape wallpaper for Linux',
-    '=============================',
-    '',
-    `Spanned image: ${span}  (${plan.span.w} x ${plan.span.h})`,
-    'One image per monitor:',
-    ...monitorLines(plan, ext),
-    '',
-    'GNOME (one spanned image):',
-    `  gsettings set org.gnome.desktop.background picture-uri "file://$PWD/${span}"`,
-    `  gsettings set org.gnome.desktop.background picture-uri-dark "file://$PWD/${span}"`,
-    '  gsettings set org.gnome.desktop.background picture-options spanned',
-    '',
-    'KDE Plasma (one image per monitor):',
-    '  Right-click the desktop on each monitor > Configure Desktop and Wallpaper,',
-    '  pick the matching file, and set Positioning to "Scaled and Cropped".',
-    '',
-    'feh (X11 window managers):',
-    `  feh --no-xinerama --bg-fill ${span}`,
-    '',
-    'With mixed scaling some desktops lay out the spanned image differently;',
-    'if it looks off, use the per-monitor images instead.',
-    '',
-    ...REBUILD_NOTE,
-    '',
-  ].join('\n');
+  return {
+    title: 'Seamscape wallpaper for Linux',
+    files: [spanFile(plan, ext), ...monitorFiles(plan, ext)],
+    blocks: [
+      { type: 'heading', text: 'GNOME (one spanned image)' },
+      { type: 'p', text: 'Run these in the folder that holds the files:' },
+      {
+        type: 'code',
+        lines: [
+          `gsettings set org.gnome.desktop.background picture-uri "file://$PWD/${span}"`,
+          `gsettings set org.gnome.desktop.background picture-uri-dark "file://$PWD/${span}"`,
+          'gsettings set org.gnome.desktop.background picture-options spanned',
+        ],
+      },
+      { type: 'heading', text: 'KDE Plasma (one image per monitor)' },
+      {
+        type: 'steps',
+        items: [
+          'Right-click the desktop on a monitor and choose "Configure Desktop and Wallpaper".',
+          'Pick the matching file and set Positioning to "Scaled and Cropped".',
+          'Repeat on each monitor.',
+        ],
+      },
+      { type: 'heading', text: 'feh (X11 window managers)' },
+      { type: 'code', lines: [`feh --no-xinerama --bg-fill ${span}`] },
+      {
+        type: 'p',
+        text: 'With mixed scaling some desktops lay out the spanned image differently; '
+          + 'if it looks off, use the per-monitor images instead.',
+      },
+      { type: 'p', text: REBUILD_NOTE },
+    ],
+  };
+}
+
+export function howToText(os, plan, ext) {
+  const guide = howToGuide(os, plan, ext);
+  const lines = [guide.title, '='.repeat(guide.title.length), '', 'Files:'];
+  for (const f of guide.files) lines.push(`  ${f.name}  ->  ${f.desc}`);
+  for (const b of guide.blocks) {
+    lines.push('');
+    if (b.type === 'heading') lines.push(`${b.text}:`);
+    else if (b.type === 'p') lines.push(b.text);
+    else if (b.type === 'steps') b.items.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    else if (b.type === 'code') b.lines.forEach((l) => lines.push(`  ${l}`));
+  }
+  lines.push('');
+  // Notepad on older Windows needs CRLF.
+  return lines.join(os === 'windows' ? '\r\n' : '\n');
 }
 
 // The list of files to put in the ZIP for the chosen OSes.

@@ -134,6 +134,20 @@ details.help p { margin-top: 8px; }
 #preview { display: block; cursor: grab; touch-action: none; }
 #preview.dragging { cursor: grabbing; }
 
+.guide + .guide { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.guide h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.guide h4 { margin: 16px 0 6px; font-size: 0.95rem; }
+.guide ol { margin: 0 0 12px; padding-left: 1.5em; }
+.guide li { margin-bottom: 4px; }
+.guide .files { margin: 0 0 12px; padding: 0; list-style: none; }
+.guide .files li { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.guide code { font: 0.9rem ui-monospace, "Cascadia Mono", Consolas, monospace; overflow-wrap: anywhere; }
+.guide pre {
+  margin: 0 0 12px; padding: 10px 12px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--border); overflow-x: auto;
+}
+.guide pre code { overflow-wrap: normal; }
+
 .zoom { display: flex; align-items: center; gap: 8px; }
 
 .site-footer { color: var(--muted); font-size: 0.9rem; padding-bottom: 32px; }
