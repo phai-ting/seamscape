@@ -35,6 +35,9 @@
 
 * { box-sizing: border-box; }
 
+/* Component display rules must not override the hidden attribute. */
+[hidden] { display: none !important; }
+
 html { scrollbar-color: var(--ink-soft) var(--paper-deep); }
 
 body {
@@ -383,3 +386,33 @@ details.help p { margin-top: 8px; max-width: 60ch; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ---------- gaps: measuring methods ---------- */
+
+.method { margin-top: 18px; }
+.method + .method { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--rule-soft); }
+.method-h { margin: 0 0 6px; font-size: 15px; font-weight: 650; }
+.method-text { margin: 0; font-size: 14px; color: var(--ink-soft); max-width: 60ch; }
+.method-steps { margin: 0; padding-left: 1.3em; font-size: 14px; color: var(--ink-soft); max-width: 60ch; }
+.method-steps li { margin-bottom: 2px; }
+.method-steps li::marker { font-weight: 700; color: var(--ink); }
+.manual-open { display: flex; flex-wrap: wrap; gap: 8px 10px; margin: 0 0 14px; }
+.manual-open .page-num { min-width: 20px; height: 20px; font-size: 12px; }
+.code-form { margin-top: 4px; }
+.code-form label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+#code-input { font-weight: 600; letter-spacing: 0.04em; }
+#code-input::placeholder { color: var(--field-line); font-weight: 500; }
+#gaps-section #edge-list { margin-top: 18px; }
+
+/* ---------- calibration overlay (this screen's pattern) ---------- */
+
+.cal-overlay { position: fixed; inset: 0; z-index: 100; background: var(--white); }
+.cal-overlay canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
+.cal-overlay[data-state="pattern"] canvas { cursor: none; }
+.cal-blocked {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 12px;
+  width: max-content; max-width: 56vw;
+  font-size: 15px; font-weight: 500; color: var(--ink);
+}
+.cal-blocked span { flex-basis: 100%; text-align: center; }

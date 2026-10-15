@@ -31,7 +31,9 @@ The full product spec is in `docs/SPEC.md`. Read it before starting a new featur
 public/            static site served by Cloudflare
   index.html       desktop entry: calibration + wallpaper builder
   capture.html     phone capture page (opened via QR)
+  calibrate.html   one monitor's calibration pattern (opened by index.html)
   js/              ES modules
+  js/vendor/       OpenCV.js and the QR generator, self-hosted
   css/
 docs/SPEC.md       product spec and phased plan
 wrangler.jsonc     Cloudflare Workers config (assets only for now)

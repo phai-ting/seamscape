@@ -1,2 +1,6 @@
 # Shell launcher for the Impeccable hook: must stay LF to run under sh.
 .claude/skills/impeccable/scripts/impeccable text eol=lf
+
+# Vendored libraries: keep byte for byte.
+public/js/vendor/opencv.js -text -diff
+public/js/vendor/qrcode.mjs -text

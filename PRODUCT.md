@@ -16,20 +16,22 @@ When a wallpaper spans several monitors, the OS treats the screens as touching, 
 
 ## Positioning
 
-Existing tools (Superpaper, DisplayFusion, GPU bezel correction) make users measure and type offsets themselves. Seamscape runs entirely in the browser with no install, and its planned camera calibration measures the layout from one phone photo (Phase 2, not built yet).
+Existing tools (Superpaper, DisplayFusion, GPU bezel correction) make users measure and type offsets themselves. Seamscape runs entirely in the browser with no install, and its camera calibration measures the layout from one phone photo.
 
 ## Operating Context
 
-- The desktop page: detect or enter screens, enter gaps in millimetres, place a picture in a live preview, download a ZIP per OS (Windows span image, macOS per-display images, Linux both), then apply it using on-screen steps that match the ZIP's HOW-TO-APPLY.txt.
+- The desktop page: detect or enter screens, measure gaps with the phone or enter them in millimetres, place a picture in a live preview, download a ZIP per OS (Windows span image, macOS per-display images, Linux both), then apply it using on-screen steps that match the ZIP's HOW-TO-APPLY.txt.
 - The layout is saved in the URL fragment; users bookmark that link to skip setup next time.
 - Screen detection uses the Window Management API (Chrome/Edge); Firefox/Safari users add monitors by hand.
+- The phone page (capture) is used once per calibration, standing or sitting at the desk: take a photo, read the feedback, retake if needed, then send the code or link. The photo stays on the phone.
 
 ## Capabilities and Constraints
 
 - Static site on Cloudflare Workers static assets; plain HTML/CSS/ES modules, no build step, no backend, no accounts.
-- Strict CSP: scripts, styles, and fonts only from the site itself; no third-party hosts.
+- Strict CSP: scripts, styles, and fonts only from the site itself; no third-party hosts. The phone page alone allows eval and WebAssembly for OpenCV.js.
 - The calibration photo and the user's picture never leave the device.
-- Phase 2 (phone capture page with QR code and OpenCV.js) and Phase 3 (live relay) are planned, not built.
+- Camera calibration: the desktop shows a marker pattern on every monitor; the phone page (opened from a QR code) measures one photo with OpenCV.js and hands the layout back as a short typed code or a link. No server is involved.
+- Phase 3 (live relay between phone and desktop) is planned, not built.
 
 ## Brand Commitments
 

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Seamscape: measure your screens</title>
+  <meta name="description" content="Take one photo of your monitors to measure the gaps between them. The photo stays on your phone.">
+  <link rel="preload" href="fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/capture.css">
+  <script type="module" src="js/capture.js"></script>
+</head>
+<body class="capture">
+  <div class="colorbar" aria-hidden="true">
+    <span class="c"></span><span class="m"></span><span class="y"></span><span class="k"></span>
+    <span class="c t5"></span><span class="m t5"></span><span class="y t5"></span><span class="k t5"></span>
+    <span class="r"></span><span class="g"></span><span class="b"></span><span class="k t2"></span>
+  </div>
+
+  <header class="masthead">
+    <div class="brand">
+      <h1 class="wordmark">Seamscape</h1>
+      <p class="tagline">Measure the gaps between your monitors from one photo.</p>
+    </div>
+    <p class="privacy">
+      <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="9" width="12" height="8" rx="1"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>
+      The photo stays on this phone
+    </p>
+  </header>
+
+  <main class="cap">
+    <section id="no-job" class="cap-step" aria-labelledby="no-job-h" hidden>
+      <h2 id="no-job-h">Start on your computer</h2>
+      <p class="lede">
+        Open seamscape.phaiting.com on the computer with your monitors. Under Gaps, choose
+        “Show calibration screens”, then scan the QR code it shows with this phone.
+      </p>
+      <p id="no-job-detail" class="status" data-kind="error"></p>
+    </section>
+
+    <section id="shoot" class="cap-step" aria-labelledby="shoot-h" hidden>
+      <h2 id="shoot-h"><span class="num">1</span>Photograph your screens</h2>
+      <p class="lede" id="expect-lede"></p>
+      <ul id="expect" class="expect"></ul>
+      <ul class="tips">
+        <li>Sit where you usually sit, so the photo sees what you see.</li>
+        <li>Fit every screen in the frame, with a little room around the edges.</li>
+        <li>Use the main camera (1×), not the wide lens.</li>
+        <li>Turn off lamps that reflect in the screens.</li>
+      </ul>
+      <div class="actions">
+        <label class="btn btn-primary file-btn" id="take-btn">
+          <input id="take" type="file" accept="image/*" capture="environment">
+          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6.5h3l1.5-2h5l1.5 2h3v9H3z"/><circle cx="10" cy="11" r="3"/></svg>
+          <span id="take-label">Take the photo</span>
+        </label>
+        <label class="btn btn-quiet file-btn">
+          <input id="pick" type="file" accept="image/*">
+          <span>Choose a photo</span>
+        </label>
+      </div>
+      <p id="shoot-status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="check" class="cap-step" aria-labelledby="check-h" hidden>
+      <h2 id="check-h"><span class="num">2</span>Check the photo</h2>
+      <p id="verdict" class="verdict" role="status"></p>
+      <div class="sheet photo-sheet"><canvas id="photo" aria-label="Your photo with the markers that were found"></canvas></div>
+      <ul id="screen-list" class="screen-list"></ul>
+      <ul id="problems" class="problems"></ul>
+      <ul id="notes" class="notes"></ul>
+      <div id="measured" hidden>
+        <h3 class="sub-h">Measured layout</h3>
+        <div class="sheet"><canvas id="layout" aria-label="Measured layout of your monitors"></canvas></div>
+        <ul id="gap-list" class="gap-list"></ul>
+      </div>
+    </section>
+
+    <section id="send" class="cap-step" aria-labelledby="send-h" hidden>
+      <h2 id="send-h"><span class="num">3</span>Send it to your computer</h2>
+      <div id="code-block">
+        <p class="lede">On your computer, under Gaps, type this code and choose Load:</p>
+        <p id="code" class="code"></p>
+      </div>
+      <p class="lede" id="link-lede">Or send yourself the link and open it on your computer:</p>
+      <div class="actions">
+        <button id="share-btn" type="button" class="btn" hidden>
+          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M5 9.5H4v7.5h12V9.5h-1"/></svg>
+          Share link
+        </button>
+        <button id="copy-btn" type="button" class="btn btn-quiet">Copy link</button>
+      </div>
+      <input id="link" type="text" readonly aria-label="Link to the measured layout">
+      <p id="send-status" class="status" role="status"></p>
+    </section>
+  </main>
+
+  <footer class="colophon">
+    <p>Seamscape measures your photo in this browser tab. Nothing is uploaded.</p>
+    <p>Set in Archivo by Omnibus-Type, SIL Open Font License.</p>
+  </footer>
+</body>
+</html>

@@ -1,7 +1,22 @@
 # Security headers for Cloudflare static assets.
-# default-src 'self' also covers connect-src, so the page cannot send pictures anywhere else.
-# Phase 2 (OpenCV.js) will need 'wasm-unsafe-eval' in script-src on capture.html.
+# default-src 'self' also covers connect-src, so no page can send pictures anywhere else.
 /*
   Content-Security-Policy: default-src 'self'; img-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
+
+# The phone capture page runs OpenCV.js (WebAssembly). Its embind glue builds
+# function wrappers with new Function, so this page alone also gets
+# 'unsafe-eval' and 'wasm-unsafe-eval' in script-src. Scripts still load only
+# from this site. connect-src adds only data:, so OpenCV can read the
+# WebAssembly inlined in its own file; nothing can be sent to another host.
+# The "!" line drops the site-wide policy, which would otherwise be sent too
+# and block all of this.
+# Cloudflare serves capture.html at /capture; both paths are listed.
+/capture
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self' data:; img-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+
+/capture.html
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self' data:; img-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'

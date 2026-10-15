@@ -10,6 +10,11 @@ import { currentScreen, detectScreens, hasWindowManagement, windowManagementPerm
 import { drawTestPattern } from './testpattern.js';
 import { buildZip, FORMATS, saveBlob } from './export.js';
 import { detectOS, howToGuide, OS_LABELS, OSES } from './howto.js';
+import { MAX_MONITORS } from './fiducials.js';
+import { decodeCode, encodeScreens } from './handoff.js';
+import {
+  closeCalibration, openOnAllScreens, openWindowFor, rememberedScreens, rememberScreens,
+} from './calibration.js';
 
 const DEFAULT_GAP = 20;
 const PREVIEW_MAX = 2400;
@@ -196,10 +201,11 @@ function addMonitor() {
   }]);
 }
 
-async function detect() {
+// Returns true when the screens were read. details: optional ScreenDetails.
+async function detect(details) {
   const status = $('#detect-status');
   try {
-    const screens = await detectScreens();
+    const screens = await detectScreens(details);
     const found = monitorsFromScreens(screens);
     // Keep sizes the user already entered for monitors that look the same.
     for (const m of found) {
@@ -208,8 +214,94 @@ async function detect() {
     }
     setMonitors(found);
     setStatus(status, `Found ${found.length} screen${found.length === 1 ? '' : 's'}. Check each diagonal: Seamscape can only guess it.`, 'ok');
+    return true;
   } catch (err) {
     setStatus(status, `Could not read your screens (${err.message}). Allow "window management" for this site, or enter your monitors by hand.`, 'error');
+    return false;
+  }
+}
+
+// ---------- calibration with the phone ----------
+
+function applyProfile(profile) {
+  state.monitors = profile.monitors;
+  state.edges = profile.edges;
+  renderMonitorTable();
+  renderEdges();
+  updateDerived();
+}
+
+async function startCalibration() {
+  const status = $('#calibrate-status');
+  let details = null;
+  if (hasWindowManagement()) {
+    try {
+      details = await window.getScreenDetails();
+      if (!(await detect(details))) details = null;
+    } catch {
+      details = null;
+    }
+  }
+  if (state.monitors.length > MAX_MONITORS) {
+    setStatus(status, `Calibration works with up to ${MAX_MONITORS} monitors.`, 'error');
+    return;
+  }
+  const primary = state.monitors.find((m) => m.primary) || state.monitors[0];
+  const screensText = encodeScreens({ monitors: state.monitors, refMm: primary.pw });
+  rememberScreens(screensText);
+  $('#calibrate-close-btn').hidden = false;
+
+  if (details) {
+    $('#calibrate-manual').hidden = true;
+    const { fullscreen, blocked } = await openOnAllScreens(details, state.monitors, screensText);
+    const parts = [`The QR code is on monitor ${primary.n}.`];
+    if (!fullscreen) parts.unshift('Click the pattern on this screen to fill it.');
+    if (blocked.length) parts.push(`Use the buttons on the pattern to open monitor ${blocked.join(', ')}, or allow pop-ups for this site.`);
+    parts.push('Press Esc to come back here.');
+    setStatus(status, parts.join(' '), 'ok');
+    return;
+  }
+
+  // No Window Management API: one window per monitor, placed by hand.
+  const box = $('#calibrate-manual');
+  box.replaceChildren(...state.monitors.map((m) => {
+    const b = el('button', { type: 'button', className: 'btn btn-quiet', dataset: { n: m.n } },
+      el('span', { className: 'page-num' }, String(m.n)), `Open on monitor ${m.n}`);
+    b.addEventListener('click', () => {
+      if (!openWindowFor(m.n, screensText)) setStatus(status, 'The browser blocked the window. Allow pop-ups for this site, then try again.', 'error');
+    });
+    return b;
+  }));
+  box.hidden = false;
+  const hint = hasWindowManagement() ? ' To place them for you, allow "window management" for this site and try again.' : '';
+  setStatus(status, `Open a window for each monitor, drag it onto that monitor, and click it to fill the screen. The QR code appears on monitor ${primary.n}.${hint}`, 'ok');
+}
+
+function loadCode(e) {
+  e.preventDefault();
+  const status = $('#code-status');
+  const text = $('#code-input').value.trim();
+  if (!text) {
+    setStatus(status, 'Type the code from your phone first.', 'error');
+    return;
+  }
+  try {
+    let profile;
+    const hash = text.indexOf('#p=');
+    if (hash >= 0) {
+      profile = profileFromHash(text.slice(hash));
+    } else {
+      const screens = rememberedScreens();
+      if (!screens) throw new Error('This tab did not show the calibration screens, so it cannot read a code. Show them here and measure again, or open the link from your phone.');
+      profile = decodeCode(text, screens);
+    }
+    applyProfile(profile);
+    closeCalibration();
+    $('#calibrate-close-btn').hidden = true;
+    $('#code-input').value = '';
+    setStatus(status, 'Loaded the measured layout. Check the gaps below and the proof; you can still adjust any value.', 'ok');
+  } catch (err) {
+    setStatus(status, err.message, 'error');
   }
 }
 
@@ -681,6 +773,26 @@ async function init() {
   $('#monitor-list').addEventListener('focusin', (e) => setHighlight(rowOf(e) ? Number(rowOf(e).dataset.n) : null));
   $('#monitor-list').addEventListener('focusout', () => setHighlight(null));
   $('#edge-list').addEventListener('input', onEdgeInput);
+  $('#calibrate-btn').addEventListener('click', startCalibration);
+  $('#calibrate-close-btn').addEventListener('click', () => {
+    closeCalibration();
+    $('#calibrate-close-btn').hidden = true;
+    $('#calibrate-manual').hidden = true;
+    setStatus($('#calibrate-status'), '');
+  });
+  $('#code-form').addEventListener('submit', loadCode);
+  // A profile link pasted into the address bar of this tab.
+  window.addEventListener('hashchange', () => {
+    try {
+      const profile = profileFromHash(location.hash);
+      if (profile) {
+        applyProfile(profile);
+        setStatus($('#code-status'), 'Loaded the layout from the link.', 'ok');
+      }
+    } catch (err) {
+      setStatus($('#code-status'), `That link could not be read (${err.message}).`, 'error');
+    }
+  });
   $('#all-gaps-btn').addEventListener('click', () => {
     const g = currentDefaultGap();
     state.edges.forEach((e) => { e.gap = g; });

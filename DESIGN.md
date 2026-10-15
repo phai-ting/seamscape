@@ -225,6 +225,12 @@ The monitor list as a ruled table: an ink rule above, a heavy-ruled uppercase he
 ### Proof Sheet (signature)
 A white sheet with a 1px ink border holding the canvas. On it: faint bleed, crop marks and registration targets in ink, trimmed pages at full strength, ink folios in each page's top-left corner, magenta gap dimensions with white labels on magenta, an optional set of seven cyan Guides hairlines, and a 3px process-yellow frame (no fill) around the highlighted page. The sheet tints yellow-drop while a file is dragged over it. Under it, the slug line lists page count, sheet size in mm, each monitor, and the gaps.
 
+### Calibration Pattern
+What each monitor shows during calibration, drawn on a canvas at native pixels. Sheet-white ground; eight ink markers (6 × 6 cells, four corners and four edge midpoints, inset two cells from the lit edge); a magenta line along the exact lit edge (it is a measurement); the monitor number in the wide cut (800, 125%) as on step numbers, a headline at 650, and soft-ink instructions. The primary adds an ink QR code beside the number. Nothing else may sit near a marker, and the pointer hides while the pattern shows.
+
+### Phone Capture Page
+The same paper, colour bar, masthead, and step numbering as the desktop, in one column. Detected markers and screen outlines are drawn over the photo in magenta (they are measurements), with ink folios at each screen's corner; the photo is lightened so the marks read. Per-monitor results use ticket rows with folios; failures are error red. The measured layout is a small proof with magenta gap labels. The handoff code is set large in Archivo 700 with tracking, between two ink rules.
+
 ### Colour Bar (brand mark)
 A 10px strip of twelve equal swatches across the top edge, decorative and hidden from assistive tech.
 

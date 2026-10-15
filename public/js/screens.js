@@ -15,9 +15,15 @@ export async function windowManagementPermission() {
   }
 }
 
+// The screens in monitor-number order: the same order monitorsFromScreens
+// (layout.js) numbers them in, so screen i here is monitor i + 1.
+export function screensInNumberOrder(details) {
+  return [...details.screens].sort((s, t) => s.left - t.left || s.top - t.top);
+}
+
 // All screens via the Window Management API (Chrome/Edge). May show a prompt.
-export async function detectScreens() {
-  const details = await window.getScreenDetails();
+export async function detectScreens(details) {
+  details ||= await window.getScreenDetails();
   return details.screens.map((s) => ({
     left: s.left,
     top: s.top,

@@ -1,0 +1,25 @@
+/* Calibration window: one canvas filling the screen, nothing else. */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("../fonts/archivo-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: block;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  color: #111111;
+  font: 500 16px/1.5 "Archivo", system-ui, sans-serif;
+}
+
+#pattern { display: block; width: 100vw; height: 100vh; cursor: pointer; }
+
+/* The pointer must not sit on a marker in the photo. */
+body[data-state="pattern"] #pattern { cursor: none; }
+
+.message { padding: 32px; max-width: 40ch; }
