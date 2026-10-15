@@ -6,7 +6,7 @@ import { decodeScreens, encodeCode, screensFromHash } from './handoff.js';
 import { detectMarkers, toGray } from './detect.js';
 import { measureLayout } from './measure.js';
 import { applyH } from './homography.js';
-import { boundingBox, physicalLayout, round1 } from './layout.js';
+import { boundingBox, diagonalInches, physicalLayout, round1 } from './layout.js';
 import { hashForProfile } from './profile.js';
 
 // Long edge the photo is measured at: a 12 MP phone photo is used as is.
@@ -76,7 +76,7 @@ function renderExpectation() {
   $('#expect-lede').textContent = `Your computer is showing a pattern on ${ms.length} ${ms.length === 1 ? 'screen' : 'screens'}:`;
   $('#expect').replaceChildren(...ms.map((m) => el('li', '',
     folio(m.n),
-    el('span', '', `${m.w} × ${m.h}`),
+    el('span', '', `${m.w} × ${m.h}, ${round1(diagonalInches(m.pw, (m.pw * m.h) / m.w))} in`),
     m.primary ? el('span', 'muted', 'primary, with the QR code') : '')));
 }
 

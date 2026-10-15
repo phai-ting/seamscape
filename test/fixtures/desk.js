@@ -24,10 +24,8 @@ export function makeDesk(setup, { photoW = 4000, photoH = 3000, fill = 0.8, keys
     const toMm = [r.PW / s.w, 0, r.X, 0, r.PH / s.h, r.Y, 0, 0, 1];
     return { n: i + 1, w: s.w, h: s.h, x: s.x, y: s.y, primary: !!s.primary, G: multiplyH(camera, toMm) };
   });
-  const primary = setup.find((s) => s.primary);
   const info = {
-    refMm: primary.PW,
-    monitors: screens.map(({ n, w, h, x, y, primary: p }) => ({ n, w, h, x, y, primary: p })),
+    monitors: screens.map(({ n, w, h, x, y, primary: p }, i) => ({ n, w, h, x, y, pw: setup[i].PW, primary: p })),
   };
   return { info, screens, rects, camera, photo: { width: photoW, height: photoH } };
 }
@@ -78,12 +76,30 @@ export function makeCurvedDesk(setup, { radius = 1800, distance = 800, photoW = 
     };
     return { n: i + 1, w: s.w, h: s.h, x: s.x, y: s.y, primary: !!s.primary, map };
   });
-  const primary = setup.find((s) => s.primary);
   const info = {
-    refMm: primary.PW,
-    monitors: screens.map(({ n, w, h, x, y, primary: p }) => ({ n, w, h, x, y, primary: p })),
+    monitors: screens.map(({ n, w, h, x, y, primary: p }, i) => ({ n, w, h, x, y, pw: setup[i].PW, primary: p })),
   };
   return { info, screens, rects, photo: { width: photoW, height: photoH } };
+}
+
+// Flat monitors placed in 3D and photographed by a pinhole camera at the
+// origin looking along +Z. Each monitor: { w, h, x, y, primary, PW, O, u }
+// with O its top-left corner in mm and u the unit direction of its top edge
+// (y runs straight down). Angle a side monitor by turning u in the XZ plane.
+export function makeSpaceDesk(setup, { f = 1500, photoW = 4000, photoH = 3000 } = {}) {
+  const screens = setup.map((s, i) => {
+    const PH = (s.PW * s.h) / s.w;
+    const map = ([x, y]) => {
+      const a = (x / s.w) * s.PW, b = (y / s.h) * PH;
+      const X = s.O[0] + a * s.u[0], Y = s.O[1] + b, Z = s.O[2] + a * s.u[2];
+      return [photoW / 2 + (f * X) / Z, photoH / 2 + (f * Y) / Z];
+    };
+    return { n: i + 1, w: s.w, h: s.h, x: s.x, y: s.y, primary: !!s.primary, map };
+  });
+  const info = {
+    monitors: setup.map((s, i) => ({ n: i + 1, w: s.w, h: s.h, x: s.x, y: s.y, pw: s.PW, primary: !!s.primary })),
+  };
+  return { info, screens, photo: { width: photoW, height: photoH } };
 }
 
 // The gaps and offsets the measurement should find, in defaultEdges order.

@@ -3,17 +3,22 @@
 //
 // Each screen gets a homography G (its native pixels -> photo pixels) fitted
 // to the corners of its markers. Mapping every screen through the primary's
-// inverse puts all of them in the primary's pixel space: one physical canvas.
-// Millimetres come from the primary's physical width, which the desktop sends.
+// inverse puts all of them in the primary's pixel space.
 //
-// Curved monitors are not flat, so one homography per screen cannot fit all
-// of its markers. Each edge is therefore placed from the markers along that
+// Monitor sizes come from the desktop (the user's diagonals), not the photo:
+// a monitor angled towards the viewer looks bigger than it is. The photo
+// measures each gap and offset where two monitors meet, using the scale of
+// the two edges that face each other; those sit at about the same distance
+// from the camera even when the monitors are angled.
+//
+// Curved monitors are not flat either, so one homography per screen cannot
+// fit all of its markers. Each edge is placed from the markers along that
 // edge (left column, right column, top row, bottom row), which are close to
 // flat; the whole-screen fit is only used to judge the photo.
 
 import { applyH, fitRobust, invertH, multiplyH, solveHomography } from './homography.js';
 import { markerLayout, markerOwner, MARKERS_PER_SCREEN } from './fiducials.js';
-import { buildProfile, halfMm } from './handoff.js';
+import { buildProfile } from './handoff.js';
 import { defaultEdges } from './layout.js';
 
 // Row and column of each marker position on the 3 x 3 grid of the screen.
@@ -110,13 +115,13 @@ function sideFit(r, side) {
   }
 }
 
-// screensInfo: { refMm, monitors: [{ n, w, h, x, y, primary }] } (handoff.decodeScreens)
+// screensInfo: { monitors: [{ n, w, h, x, y, pw, primary }] } (handoff.decodeScreens)
 // detections: [{ id, corners: [[x, y] x 4] }] in photo pixels, clockwise from
 //             each marker's top-left
 // photo: { width, height }
-// Returns { ok, screens, problems, notes, profile, rects }.
+// Returns { ok, screens, problems, notes, profile }.
 export function measureLayout(screensInfo, detections, photo) {
-  const { monitors: screens, refMm } = screensInfo;
+  const { monitors: screens } = screensInfo;
   const count = screens.length;
   const valid = dedupe(detections).filter((d) => d.id < count * MARKERS_PER_SCREEN);
   const per = screens.map((s) => analyseScreen(s, valid.filter((d) => markerOwner(d.id).n === s.n), photo));
@@ -125,7 +130,7 @@ export function measureLayout(screensInfo, detections, photo) {
 
   if (valid.length === 0) {
     problems.push('No calibration markers found. Check that every screen shows its pattern, then try again with less glare.');
-    return { ok: false, screens: per, problems, notes, profile: null, rects: null };
+    return { ok: false, screens: per, problems, notes, profile: null };
   }
 
   const missing = per.filter((r) => r.status === 'missing').map((r) => r.n);
@@ -146,63 +151,70 @@ export function measureLayout(screensInfo, detections, photo) {
       notes.push(`Monitor ${r.n} is not flat in the photo: a curved screen, or a wide lens. Its edges were measured from the markers next to each edge.`);
     }
   }
-  if (problems.length) return { ok: false, screens: per, problems, notes, profile: null, rects: null };
+  if (problems.length) return { ok: false, screens: per, problems, notes, profile: null };
 
-  // Every screen into the primary's pixel space, edge by edge.
+  // Every screen into the primary's pixel space.
   const ref = screens.find((s) => s.primary);
   const toRef = invertH(per.find((r) => r.n === ref.n).G);
-  const edgesOf = (s) => {
-    const r = per.find((p) => p.n === s.n);
-    const at = (side, ends) => {
-      const P = multiplyH(toRef, sideFit(r, side));
-      return ends.map((c) => applyH(P, c));
-    };
-    const [l0, l1] = at('left', [[0, 0], [0, s.h]]);
-    const [r0, r1] = at('right', [[s.w, 0], [s.w, s.h]]);
-    const [t0, t1] = at('top', [[0, 0], [s.w, 0]]);
-    return { left: (l0[0] + l1[0]) / 2, right: (r0[0] + r1[0]) / 2, top: (t0[1] + t1[1]) / 2 };
-  };
-  const refEdges = edgesOf(ref);
-  const mmPerPx = refMm / (refEdges.right - refEdges.left);
-  const rects = screens.map((s) => {
-    const e = edgesOf(s);
-    const quad = [[0, 0], [s.w, 0], [s.w, s.h], [0, s.h]]
-      .map((c) => applyH(multiplyH(toRef, per.find((r) => r.n === s.n).G), c));
-    const w = (e.right - e.left) * mmPerPx;
-    const h = (w * s.h) / s.w;
+  const fitOf = (s) => per.find((r) => r.n === s.n);
+  // A point of screen s, placed by the markers along one of its sides.
+  const at = (s, side, point) => applyH(multiplyH(toRef, sideFit(fitOf(s), side)), point);
+  const centre = (s) => applyH(multiplyH(toRef, fitOf(s).G), [s.w / 2, s.h / 2]);
+
+  for (const s of screens) {
+    const quad = [[0, 0], [s.w, 0], [s.w, s.h], [0, s.h]].map((c) => applyH(multiplyH(toRef, fitOf(s).G), c));
     const top = Math.atan2(quad[1][1] - quad[0][1], quad[1][0] - quad[0][0]);
     const bottom = Math.atan2(quad[2][1] - quad[3][1], quad[2][0] - quad[3][0]);
-    return { n: s.n, x: e.left * mmPerPx, y: e.top * mmPerPx, w, h, tilt: ((top + bottom) / 2) * (180 / Math.PI), quad };
-  });
-
-  for (const r of rects) {
-    if (Math.abs(r.tilt) >= 1.5) {
-      notes.push(`Monitor ${r.n} sits about ${Math.round(Math.abs(r.tilt))}° off level. The wallpaper treats it as level.`);
+    const tilt = ((top + bottom) / 2) * (180 / Math.PI);
+    if (Math.abs(tilt) >= 1.5) {
+      notes.push(`Monitor ${s.n} sits about ${Math.round(Math.abs(tilt))}° off level. The wallpaper treats it as level.`);
     }
   }
 
   // Gaps along the links the desktop builder uses, so its Gaps list matches.
-  const byN = new Map(rects.map((r) => [r.n, r]));
-  const links = defaultEdges(screens.map((s) => ({ ...s, pw: 1, ph: 1 })), 0);
+  // Facing edges give the local scale: their lengths in the photo against
+  // their lengths in mm. Two monitors whose scales disagree there have a
+  // diagonal that does not match the photo.
+  const byN = new Map(screens.map((s) => [s.n, s]));
+  const links = defaultEdges(screens.map((s) => ({ ...s, ph: (s.pw * s.h) / s.w })), 0);
   const edges = [];
   for (const e of links) {
     const a = byN.get(e.a), b = byN.get(e.b);
+    const aPh = (a.pw * a.h) / a.w, bPh = (b.pw * b.h) / b.w;
+    let gap, shift, kA, kB;
     if (e.dir === 'h') {
-      if (b.x + b.w / 2 < a.x + a.w / 2) {
+      if (centre(b)[0] < centre(a)[0]) {
         problems.push(`Your display settings put monitor ${e.b} to the right of monitor ${e.a}, but in the photo it is on the left. Fix the order in your display settings, then start the calibration again.`);
       }
-      edges.push({ gap: b.x - (a.x + a.w), shift: b.y - a.y });
+      const aTop = at(a, 'right', [a.w, 0]), aBottom = at(a, 'right', [a.w, a.h]);
+      const bTop = at(b, 'left', [0, 0]), bBottom = at(b, 'left', [0, b.h]);
+      kA = aPh / Math.hypot(aBottom[0] - aTop[0], aBottom[1] - aTop[1]);
+      kB = bPh / Math.hypot(bBottom[0] - bTop[0], bBottom[1] - bTop[1]);
+      const k = (kA + kB) / 2;
+      gap = ((bTop[0] + bBottom[0]) / 2 - (aTop[0] + aBottom[0]) / 2) * k;
+      shift = (bTop[1] - aTop[1]) * k;
     } else {
-      if (b.y + b.h / 2 < a.y + a.h / 2) {
+      if (centre(b)[1] < centre(a)[1]) {
         problems.push(`Your display settings put monitor ${e.b} below monitor ${e.a}, but in the photo it is above. Fix the order in your display settings, then start the calibration again.`);
       }
-      edges.push({ gap: b.y - (a.y + a.h), shift: b.x - a.x });
+      const aLeft = at(a, 'bottom', [0, a.h]), aRight = at(a, 'bottom', [a.w, a.h]);
+      const bLeft = at(b, 'top', [0, 0]), bRight = at(b, 'top', [b.w, 0]);
+      kA = a.pw / Math.hypot(aRight[0] - aLeft[0], aRight[1] - aLeft[1]);
+      kB = b.pw / Math.hypot(bRight[0] - bLeft[0], bRight[1] - bLeft[1]);
+      const k = (kA + kB) / 2;
+      gap = ((bLeft[1] + bRight[1]) / 2 - (aLeft[1] + aRight[1]) / 2) * k;
+      shift = (bLeft[0] - aLeft[0]) * k;
     }
+    // kA / kB > 1: b covers more of the photo than its diagonal allows next to a.
+    const ratio = kA / kB;
+    if (Math.abs(ratio - 1) > 0.1) {
+      const pct = Math.round(Math.abs(ratio - 1) * 100);
+      notes.push(`Next to monitor ${e.a}, monitor ${e.b} looks ${pct}% ${ratio > 1 ? 'larger' : 'smaller'} than their diagonals say. Check both diagonals in step 1 on your computer, then measure again.`);
+    }
+    edges.push({ gap, shift });
   }
-  if (problems.length) return { ok: false, screens: per, problems, notes, profile: null, rects };
+  if (problems.length) return { ok: false, screens: per, problems, notes, profile: null };
 
-  const pw = {};
-  for (const r of rects) if (r.n !== ref.n) pw[r.n] = halfMm(r.w);
-  const profile = buildProfile(screensInfo, { pw, edges });
-  return { ok: true, screens: per, problems, notes, profile, rects };
+  const profile = buildProfile(screensInfo, edges);
+  return { ok: true, screens: per, problems, notes, profile };
 }

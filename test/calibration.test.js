@@ -8,7 +8,7 @@ import {
 } from '../public/js/handoff.js';
 import { physicalLayout } from '../public/js/layout.js';
 import { decodeProfile, encodeProfile } from '../public/js/profile.js';
-import { detections, expectedEdges, makeCurvedDesk, makeDesk } from './fixtures/desk.js';
+import { detections, expectedEdges, makeCurvedDesk, makeDesk, makeSpaceDesk } from './fixtures/desk.js';
 
 const near = (a, b, eps, what = '') => assert.ok(Math.abs(a - b) <= eps, `${what} ${a} != ${b} (±${eps})`);
 
@@ -200,6 +200,44 @@ test('measureLayout keeps every marker on curved monitors and measures their gap
   for (const m of res.profile.monitors) near(m.pw, 597.7, 6, `monitor ${m.n} width`);
 });
 
+// Three identical 27-inch monitors, the outer two turned 25 degrees towards
+// the seat, as on a wrap-around desk. Gaps: 18 mm left, 22 mm right; the left
+// monitor sits 6 mm lower, the right one 4 mm higher.
+function angledDesk(sizes = [597.7, 597.7, 597.7]) {
+  const PW = 597.7, PH = (PW * 1440) / 2560, D = 900;
+  const a = (25 * Math.PI) / 180;
+  const uL = [Math.cos(a), 0, Math.sin(a)], uR = [Math.cos(a), 0, -Math.sin(a)];
+  const leftTopRight = [-PW / 2 - 18, -PH / 2 + 6, D];
+  const desk = makeSpaceDesk([
+    { w: 2560, h: 1440, x: -2560, y: 0, PW, O: leftTopRight.map((v, i) => v - PW * uL[i]), u: uL },
+    { w: 2560, h: 1440, x: 0, y: 0, primary: true, PW, O: [-PW / 2, -PH / 2, D], u: [1, 0, 0] },
+    { w: 2560, h: 1440, x: 2560, y: 0, PW, O: [PW / 2 + 22, -PH / 2 - 4, D], u: uR },
+  ]);
+  desk.info.monitors.forEach((m, i) => { m.pw = sizes[i]; });
+  return desk;
+}
+
+test('measureLayout measures gaps between angled monitors at their shared edges', () => {
+  const desk = angledDesk();
+  const res = measureLayout(desk.info, detections(desk, { noise: 0.8, seed: 9 }), desk.photo);
+  assert.equal(res.ok, true, res.problems.join(' / '));
+  const byKey = new Map(res.profile.edges.map((e) => [`${e.a}${e.dir}${e.b}`, e]));
+  near(byKey.get('1h2').gap, 18, 1, 'left gap');
+  near(byKey.get('1h2').shift, -6, 1, 'left offset');
+  near(byKey.get('2h3').gap, 22, 1, 'right gap');
+  near(byKey.get('2h3').shift, -4, 1, 'right offset');
+  // Sizes stay what step 1 says, although the angled screens look bigger.
+  for (const m of res.profile.monitors) assert.equal(m.pw, 597.7);
+  assert.ok(!res.notes.some((n) => /diagonals/.test(n)), res.notes.join(' / '));
+});
+
+test('measureLayout notes a diagonal that does not match the photo', () => {
+  const desk = angledDesk([597.7, 597.7, 520]);
+  const res = measureLayout(desk.info, detections(desk), desk.photo);
+  assert.equal(res.ok, true, res.problems.join(' / '));
+  assert.match(res.notes.join(' '), /monitor 3 looks 15% larger than their diagonals say/);
+});
+
 test('measureLayout tells the user which monitor is cut off', () => {
   const desk = makeDesk(LAYOUTS['three monitors'], { fill: 1.6 });
   const res = measureLayout(desk.info, detections(desk), desk.photo);
@@ -253,22 +291,22 @@ test('measureLayout notes a monitor that sits off level', () => {
 
 test('screen list round-trips through the QR payload', () => {
   const info = {
-    refMm: 597.7,
     monitors: [
-      { n: 1, w: 1920, h: 1080, x: -1920, y: 180, primary: false },
-      { n: 2, w: 2560, h: 1440, x: 0, y: 0, primary: true },
-      { n: 3, w: 1080, h: 1920, x: 2560, y: -240, primary: false },
+      { n: 1, w: 1920, h: 1080, x: -1920, y: 180, pw: 531.4, primary: false },
+      { n: 2, w: 2560, h: 1440, x: 0, y: 0, pw: 597.7, primary: true },
+      { n: 3, w: 1080, h: 1920, x: 2560, y: -240, pw: 298.9, primary: false },
     ],
   };
   const text = encodeScreens(info);
-  assert.equal(text, '1_597.7_1920x1080-1920+180_2560x1440+0+0p_1080x1920+2560-240');
+  assert.equal(text, '2_1920x1080-1920+180@531.4_2560x1440+0+0@597.7p_1080x1920+2560-240@298.9');
   assert.deepEqual(decodeScreens(text), info);
   const url = captureUrl('https://seamscape.phaiting.com', text);
   assert.equal(url, `https://seamscape.phaiting.com/capture#s=${text}`);
   assert.equal(screensFromHash(new URL(url).hash), text);
   assert.equal(screensFromHash('#x=1'), null);
-  assert.throws(() => decodeScreens('2_597.7_1920x1080+0+0p'), /different version/);
-  assert.throws(() => decodeScreens('1_597.7_19x20x1'), /damaged/);
+  assert.throws(() => decodeScreens('1_597.7_1920x1080+0+0p'), /another version/);
+  assert.throws(() => decodeScreens('2_1920x1080+0+0p'), /damaged/);
+  assert.throws(() => decodeScreens('2_19x20x1@5'), /damaged/);
 });
 
 function measuredProfile(name) {
@@ -289,7 +327,8 @@ test('short code rebuilds exactly the measured profile', () => {
 test('short code is short and forgiving to type', () => {
   const { profile, screens } = measuredProfile('three monitors');
   const code = encodeCode(profile, screens);
-  assert.equal(code.replace(/-/g, '').length, 18);
+  // Two links of gap + offset, plus the checksum: 63 bits.
+  assert.equal(code.replace(/-/g, '').length, 13);
   const typed = code.toLowerCase().replace(/-/g, ' ').replace(/1/g, 'l').replace(/0/g, 'o');
   assert.deepEqual(decodeCode(typed, screens), profile);
 });

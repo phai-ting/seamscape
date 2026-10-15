@@ -247,7 +247,7 @@ async function startCalibration() {
     return;
   }
   const primary = state.monitors.find((m) => m.primary) || state.monitors[0];
-  const screensText = encodeScreens({ monitors: state.monitors, refMm: primary.pw });
+  const screensText = encodeScreens({ monitors: state.monitors });
   rememberScreens(screensText);
   $('#calibrate-close-btn').hidden = false;
 
