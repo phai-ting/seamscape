@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "seamscape",
+  "compatibility_date": "2026-10-01",
+  // Static assets only for v1: no Worker script, everything runs in the browser.
+  // Phase 3 adds a "main" script and a Durable Object for the phone relay.
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "seamscape.phaiting.com", "custom_domain": true }
+  ]
+}

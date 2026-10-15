@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seamscape: wallpaper that lines up across your monitors</title>
+  <meta name="description" content="Adjust your wallpaper for the gaps between your monitors so lines and horizons stay straight. Runs entirely in your browser.">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <h1>Seamscape</h1>
+    <p class="tagline">Wallpaper that lines up across your monitors, as if you were looking through a window.</p>
+  </header>
+
+  <main>
+    <section id="screens-section" aria-labelledby="screens-h">
+      <h2 id="screens-h"><span class="step">1</span> Your screens</h2>
+      <p>
+        Seamscape reads your monitor setup from the browser. Check the list, then set each
+        monitor's size (the diagonal from its spec sheet).
+      </p>
+      <div class="row">
+        <button id="detect-btn" type="button" class="primary">Detect all screens</button>
+        <button id="add-btn" type="button">Add a monitor</button>
+      </div>
+      <p id="detect-status" class="status" role="status"></p>
+      <div class="table-wrap">
+        <table id="monitor-table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Primary</th>
+              <th scope="col">Resolution (px)</th>
+              <th scope="col">Position on desktop (px)</th>
+              <th scope="col">Diagonal (in)</th>
+              <th scope="col">Picture size</th>
+              <th scope="col"><span class="sr-only">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <details class="help">
+        <summary>What are these numbers?</summary>
+        <p>
+          <b>Resolution</b> is the monitor's native resolution. <b>Position</b> is where the
+          monitor sits in your OS display settings, in native pixels, with the primary
+          monitor at 0, 0. Monitors to the left of or above the primary have negative values.
+          On Chrome and Edge, "Detect all screens" fills these in for you.
+        </p>
+      </details>
+    </section>
+
+    <section id="gaps-section" aria-labelledby="gaps-h">
+      <h2 id="gaps-h"><span class="step">2</span> Gaps between screens</h2>
+      <p>
+        With a ruler, measure from the edge of the lit picture on one screen to the edge of
+        the lit picture on the next. This includes both bezels and any space between the
+        monitors. All values are in millimetres (1 inch = 25.4 mm).
+      </p>
+      <div class="row">
+        <label>Set every gap to
+          <input id="all-gaps" type="number" min="0" step="0.5" value="20" inputmode="decimal"> mm
+        </label>
+        <button id="all-gaps-btn" type="button">Apply</button>
+        <button id="reset-edges-btn" type="button">Reset offsets from desktop arrangement</button>
+      </div>
+      <div id="edge-list"></div>
+    </section>
+
+    <section id="picture-section" aria-labelledby="picture-h">
+      <h2 id="picture-h"><span class="step">3</span> Picture</h2>
+      <div class="row">
+        <label class="file-btn">
+          <input id="image-input" type="file" accept="image/*">
+          <span>Choose a picture…</span>
+        </label>
+        <button id="pattern-btn" type="button">Use test pattern</button>
+        <label class="zoom">Zoom
+          <input id="zoom" type="range" min="1" max="8" step="0.01" value="1">
+        </label>
+        <button id="reset-view-btn" type="button">Reset position</button>
+      </div>
+      <p id="image-status" class="status" role="status"></p>
+      <div class="preview-wrap" id="drop-zone">
+        <canvas id="preview" aria-label="Preview of the wallpaper across your monitors"></canvas>
+      </div>
+      <p class="hint">Drag to move the picture, scroll to zoom. Dimmed areas fall behind bezels and gaps and won't be shown. You can also drop a picture here.</p>
+    </section>
+
+    <section id="download-section" aria-labelledby="download-h">
+      <h2 id="download-h"><span class="step">4</span> Download</h2>
+      <fieldset class="row">
+        <legend>Files for</legend>
+        <label><input type="checkbox" name="os" value="windows"> Windows</label>
+        <label><input type="checkbox" name="os" value="macos"> macOS</label>
+        <label><input type="checkbox" name="os" value="linux"> Linux</label>
+      </fieldset>
+      <div class="row">
+        <label>Format
+          <select id="format">
+            <option value="png">PNG (best quality)</option>
+            <option value="jpg">JPEG (smaller files)</option>
+          </select>
+        </label>
+        <button id="download-btn" type="button" class="primary">Download ZIP</button>
+      </div>
+      <p id="download-status" class="status" role="status"></p>
+    </section>
+
+    <section id="profile-section" aria-labelledby="profile-h">
+      <h2 id="profile-h">Save this layout</h2>
+      <p>Bookmark this link to skip setup next time. Your layout is stored in the link itself.</p>
+      <div class="row">
+        <input id="profile-link" type="text" readonly aria-label="Link to this layout">
+        <button id="copy-btn" type="button">Copy link</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Your pictures never leave your computer: everything runs in this browser tab.</p>
+  </footer>
+</body>
+</html>

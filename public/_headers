@@ -1,0 +1,7 @@
+# Security headers for Cloudflare static assets.
+# default-src 'self' also covers connect-src, so the page cannot send pictures anywhere else.
+# Phase 2 (OpenCV.js) will need 'wasm-unsafe-eval' in script-src on capture.html.
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
