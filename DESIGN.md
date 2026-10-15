@@ -233,6 +233,9 @@ What each monitor shows during calibration, drawn on a canvas at native pixels. 
 ### Phone Capture Page
 The same paper, colour bar, masthead, and step numbering as the desktop, in one column. Detected markers and screen outlines are drawn over the photo in magenta (they are measurements), with ink folios at each screen's corner; the photo is lightened so the marks read. Per-monitor results use ticket rows with folios; failures are error red. The measured layout is a small proof with magenta gap labels. The handoff code is set large in Archivo 700 with tracking, between two ink rules.
 
+### Logo
+The mark: three panes in registration ink, the middle one taller, crossed by one straight band of paper that runs unbroken through the gaps (a wallpaper lined up across monitors). It sits before the wordmark at 1.15em, a third of an em apart, drawn inline so the band takes the page's paper colour. As the favicon it sits on a proof-paper tile with 3px corners (public/favicon.svg). No other colours.
+
 ### Colour Bar (brand mark)
 A 10px strip of twelve equal swatches across the top edge, decorative and hidden from assistive tech.
 

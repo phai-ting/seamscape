@@ -35,7 +35,7 @@ Existing tools (Superpaper, DisplayFusion, GPU bezel correction) make users meas
 
 ## Brand Commitments
 
-- Name: Seamscape. No logo, colours, or typefaces are fixed yet.
+- Name: Seamscape. Logo: the mark (three monitor panes in ink crossed by one unbroken band of light) before the wordmark; the same mark on a proof-paper tile is the favicon. Colours and type follow DESIGN.md.
 - The privacy promise ("your pictures never leave your computer") stays visible.
 
 ## Evidence on Hand
