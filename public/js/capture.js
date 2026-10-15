@@ -2,12 +2,14 @@
 // and hand the result to the desktop as a code or a link.
 // The photo is decoded into a canvas in this tab and never sent anywhere.
 
-import { decodeScreens, encodeCode, screensFromHash } from './handoff.js';
+import { decodeScreens, encodeCode, keyFromHash, screensFromHash } from './handoff.js';
 import { detectMarkers, toGray } from './detect.js';
 import { measureLayout } from './measure.js';
 import { applyH } from './homography.js';
 import { boundingBox, diagonalInches, physicalLayout, round1 } from './layout.js';
-import { hashForProfile } from './profile.js';
+import { encodeProfile, hashForProfile } from './profile.js';
+import { seal, sessionId } from './relay-crypto.js';
+import { connectRelay } from './relay.js';
 
 // Long edge the photo is measured at: a 12 MP phone photo is used as is.
 const MAX_EDGE = 4032;
@@ -284,11 +286,68 @@ function showResult(result, found, source) {
 
 // ---------- step 3: handoff ----------
 
+// The live link (Phase 3): the result goes straight to the desktop page that
+// showed the QR code, sealed with the key from the QR code's fragment.
+// live: { key, relay, box (sealed result waiting for a receipt), desktops, timer }
+let live = null;
+
+function liveStatus(text, kind = '') {
+  setStatus($('#live-status'), text, kind);
+}
+
+async function startLive(key) {
+  const id = await sessionId(key);
+  live = { key, box: null, desktops: null, timer: 0 };
+  live.relay = connectRelay(id, 'phone', {
+    onState: (state) => {
+      if (state === 'open') flushLive();
+      if (state === 'unavailable' && live.box) liveStatus('Could not reach your computer. Type the code below instead.', 'error');
+    },
+    onMessage: (msg) => {
+      if (msg.type === 'peers') {
+        live.desktops = msg.desktop;
+        if (live.box && !msg.desktop) {
+          liveStatus('The Seamscape page on your computer is closed. Type the code below there, or send yourself the link.', 'error');
+        }
+        flushLive();
+      } else if (msg.type === 'received') {
+        clearTimeout(live.timer);
+        live.box = null;
+        liveStatus('Sent. Your computer has the measured layout.', 'ok');
+      } else if (msg.type === 'rejected') {
+        clearTimeout(live.timer);
+        live.box = null;
+        liveStatus('Your computer could not use this result. Type the code below instead.', 'error');
+      }
+    },
+  });
+}
+
+function flushLive() {
+  if (live?.box && live.desktops !== 0) live.relay.send({ type: 'result', box: live.box });
+}
+
+async function sendLive(profile) {
+  if (!live) return;
+  live.box = await seal(live.key, { v: 1, s: job.text, p: encodeProfile(profile) });
+  liveStatus('Sending to your computer…');
+  flushLive();
+  clearTimeout(live.timer);
+  live.timer = setTimeout(() => {
+    if (live.box) liveStatus('Your computer has not answered yet. If nothing arrives, type the code below instead.', 'error');
+  }, 10000);
+}
+
 function showHandoff(profile) {
   const link = `${location.origin}/${hashForProfile(profile)}`;
   const code = encodeCode(profile, job.text);
   $('#code-block').hidden = !code;
   $('#code').textContent = code || '';
+  $('#live-block').hidden = !live;
+  $('#code-lede').textContent = live
+    ? 'If it does not arrive, type this code on your computer, under Gaps, and choose Load:'
+    : 'On your computer, under Gaps, type this code and choose Load:';
+  if (live) sendLive(profile).catch(() => liveStatus('Could not send the result. Type the code below instead.', 'error'));
   $('#link-lede').textContent = code
     ? 'Or send yourself the link and open it on your computer:'
     : 'This layout is too large for a short code. Send yourself the link and open it on your computer:';
@@ -329,6 +388,8 @@ function init() {
   }
   $('#shoot').hidden = false;
   renderExpectation();
+  const key = keyFromHash(location.hash);
+  if (key) startLive(key).catch(() => { live = null; });
   // Start fetching the measuring tool while the camera is open.
   $('#take').addEventListener('click', () => { loadOpenCV().catch(() => {}); });
   $('#pick').addEventListener('click', () => { loadOpenCV().catch(() => {}); });

@@ -8,7 +8,7 @@ The full product spec is in `docs/SPEC.md`. Read it before starting a new featur
 
 ## Core principles
 
-- **Static site, no backend for v1.** Everything runs in the browser. The only optional server piece is a later live phone-to-desktop relay (see SPEC, Phase 3).
+- **Static site, almost no backend.** Everything runs in the browser. The one server piece is the live phone-to-desktop relay (SPEC, Phase 3): a Durable Object in the same Worker that only passes on end-to-end encrypted messages and stores nothing. Everything must keep working without it.
 - **Privacy by design.** The calibration photo and the user's wallpaper image never leave the device. Do not upload them anywhere.
 - **No accounts, no database.** A calibration profile is stored in the URL fragment (after `#`) so it is never sent to the server. Users bookmark it.
 - **Plain web platform first.** Prefer vanilla HTML/CSS/JS (ES modules). Add a build step (e.g. Vite) only if it clearly pays for itself. Load OpenCV.js lazily, only on the capture page.
@@ -35,8 +35,9 @@ public/            static site served by Cloudflare
   js/              ES modules
   js/vendor/       OpenCV.js and the QR generator, self-hosted
   css/
+worker/            Worker script: the live-link relay (Durable Object) only
 docs/SPEC.md       product spec and phased plan
-wrangler.jsonc     Cloudflare Workers config (assets only for now)
+wrangler.jsonc     Cloudflare Workers config (static assets + relay)
 ```
 
 ## Deploy

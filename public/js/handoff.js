@@ -53,8 +53,16 @@ export function screensFromHash(hash) {
   return m ? m[1] : null;
 }
 
-export function captureUrl(origin, screensText) {
-  return `${origin}/capture#s=${screensText}`;
+// The live-link key from "#...&k=..." (relay-crypto.js); null if there is none.
+export function keyFromHash(hash) {
+  const m = /(?:^#|&)k=([A-Za-z0-9_-]{22})(?:&|$)/.exec(hash);
+  return m ? m[1] : null;
+}
+
+// The phone page link in the QR code. key: the live-link key, if any. It
+// rides in the fragment, which the browser never sends to the server.
+export function captureUrl(origin, screensText, key = null) {
+  return `${origin}/capture#s=${screensText}${key ? `&k=${key}` : ''}`;
 }
 
 // Measurements are kept to half millimetres: finer than a photo can resolve,

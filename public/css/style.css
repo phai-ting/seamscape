@@ -402,6 +402,7 @@ details.help p { margin-top: 8px; max-width: 60ch; }
 .code-form { margin-top: 4px; }
 .code-form label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
 #code-input { font-weight: 600; letter-spacing: 0.04em; }
+.live-status:not(:empty) { margin-top: 0; }
 #code-input::placeholder { color: var(--placeholder); font-weight: 500; }
 #gaps-section #edge-list { margin-top: 18px; }
 

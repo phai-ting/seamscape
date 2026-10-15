@@ -79,8 +79,12 @@
 
     <section id="send" class="cap-step" aria-labelledby="send-h" hidden>
       <h2 id="send-h"><span class="num">3</span>Send it to your computer</h2>
+      <div id="live-block" hidden>
+        <p id="live-status" class="live-status" role="status" aria-live="polite"></p>
+        <p class="live-note">Only the measured gaps travel, encrypted end to end, through Seamscape’s relay. The photo stays on this phone.</p>
+      </div>
       <div id="code-block">
-        <p class="lede">On your computer, under Gaps, type this code and choose Load:</p>
+        <p class="lede" id="code-lede">On your computer, under Gaps, type this code and choose Load:</p>
         <p id="code" class="code"></p>
       </div>
       <p class="lede" id="link-lede">Or send yourself the link and open it on your computer:</p>
@@ -97,7 +101,7 @@
   </main>
 
   <footer class="colophon">
-    <p>Seamscape measures your photo in this browser tab. Nothing is uploaded.</p>
+    <p>Seamscape measures your photo in this browser tab. The photo is never uploaded.</p>
     <p>Set in Archivo by Omnibus-Type, SIL Open Font License.</p>
   </footer>
 </body>

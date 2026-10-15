@@ -2,12 +2,24 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "seamscape",
   "compatibility_date": "2026-10-01",
-  // Static assets only for v1: no Worker script, everything runs in the browser.
-  // Phase 3 adds a "main" script and a Durable Object for the phone relay.
+  // The Worker only handles the live link between phone and desktop
+  // (/relay/<session>, a WebSocket per page); everything else is a static
+  // asset served without running it.
+  "main": "worker/index.js",
   "assets": {
     "directory": "./public",
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/relay/*"]
   },
+  // One Durable Object per calibration session. It holds the open sockets
+  // and stores nothing (SQLite-backed so it runs on the free plan).
+  "durable_objects": {
+    "bindings": [{ "name": "RELAY", "class_name": "Relay" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Relay"] }
+  ],
   "routes": [
     { "pattern": "seamscape.phaiting.com", "custom_domain": true }
   ]

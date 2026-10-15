@@ -5,13 +5,15 @@ import {
   positionNames, reconcileEdges, round1, sizeFromDiagonal, virtualDesktop,
 } from './layout.js';
 import { clampView, defaultView, outputPlan, panView, placement, zoomView, MAX_ZOOM } from './crop.js';
-import { hashForProfile, profileFromHash } from './profile.js';
+import { decodeProfile, hashForProfile, profileFromHash } from './profile.js';
 import { currentScreen, detectScreens, hasWindowManagement, windowManagementPermission } from './screens.js';
 import { drawTestPattern } from './testpattern.js';
 import { buildZip, FORMATS, saveBlob } from './export.js';
 import { detectOS, howToGuide, OS_LABELS, OSES } from './howto.js';
 import { MAX_MONITORS } from './fiducials.js';
 import { decodeCode, encodeScreens } from './handoff.js';
+import { newSessionKey, sessionId, unseal } from './relay-crypto.js';
+import { connectRelay } from './relay.js';
 import {
   closeCalibration, openOnAllScreens, openWindowFor, rememberedScreens, rememberScreens,
 } from './calibration.js';
@@ -231,6 +233,47 @@ function applyProfile(profile) {
   updateDerived();
 }
 
+// ---------- live link (Phase 3) ----------
+
+let relay = null;
+
+// Listen for the phone's result. The relay passes on a sealed box; only this
+// page and the phone hold the key, so the server never sees the numbers.
+async function startLiveLink(key, screensText) {
+  relay?.close();
+  const live = $('#live-status');
+  const id = await sessionId(key);
+  const current = connectRelay(id, 'desktop', {
+    onState: (state) => {
+      if (state === 'unavailable') {
+        setStatus(live, 'The live link is not available right now. Type the code from your phone instead.');
+      }
+    },
+    onMessage: async (msg) => {
+      if (msg.type === 'peers') {
+        setStatus(live, msg.phone
+          ? 'Your phone is connected. When it has measured your screens, the result appears here by itself.'
+          : 'Live link ready. When your phone has measured your screens, the result appears here by itself.', 'ok');
+        return;
+      }
+      if (msg.type !== 'result') return;
+      try {
+        const value = await unseal(key, msg.box);
+        if (!value || value.s !== screensText) throw new Error('not this calibration');
+        applyProfile(decodeProfile(value.p));
+        current.send({ type: 'received' });
+        closeCalibration();
+        $('#calibrate-close-btn').hidden = true;
+        setStatus(live, 'Received the measured layout from your phone. Check the gaps below and the proof; you can still adjust any value.', 'ok');
+      } catch {
+        current.send({ type: 'rejected' });
+        setStatus(live, 'Your phone sent a result this page could not use. Type the code from your phone instead.', 'error');
+      }
+    },
+  });
+  relay = current;
+}
+
 async function startCalibration() {
   const status = $('#calibrate-status');
   let details = null;
@@ -249,11 +292,14 @@ async function startCalibration() {
   const primary = state.monitors.find((m) => m.primary) || state.monitors[0];
   const screensText = encodeScreens({ monitors: state.monitors });
   rememberScreens(screensText);
+  const key = newSessionKey();
   $('#calibrate-close-btn').hidden = false;
 
   if (details) {
     $('#calibrate-manual').hidden = true;
-    const { fullscreen, blocked } = await openOnAllScreens(details, state.monitors, screensText);
+    const opening = openOnAllScreens(details, state.monitors, screensText, key);
+    startLiveLink(key, screensText).catch(() => {});
+    const { fullscreen, blocked } = await opening;
     const parts = [`The QR code is on monitor ${primary.n}.`];
     if (!fullscreen) parts.unshift('Click the pattern on this screen to fill it.');
     if (blocked.length) parts.push(`Use the buttons on the pattern to open monitor ${blocked.join(', ')}, or allow pop-ups for this site.`);
@@ -268,11 +314,12 @@ async function startCalibration() {
     const b = el('button', { type: 'button', className: 'btn btn-quiet', dataset: { n: m.n } },
       el('span', { className: 'page-num' }, String(m.n)), `Open on monitor ${m.n}`);
     b.addEventListener('click', () => {
-      if (!openWindowFor(m.n, screensText)) setStatus(status, 'The browser blocked the window. Allow pop-ups for this site, then try again.', 'error');
+      if (!openWindowFor(m.n, screensText, key)) setStatus(status, 'The browser blocked the window. Allow pop-ups for this site, then try again.', 'error');
     });
     return b;
   }));
   box.hidden = false;
+  startLiveLink(key, screensText).catch(() => {});
   const hint = hasWindowManagement() ? ' To place them for you, allow "window management" for this site and try again.' : '';
   setStatus(status, `Open a window for each monitor, drag it onto that monitor, and click it to fill the screen. The QR code appears on monitor ${primary.n}.${hint}`, 'ok');
 }

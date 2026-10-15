@@ -1,7 +1,7 @@
 // A calibration window for one monitor, opened by the desktop page as
 // calibrate.html#n=<monitor number>&s=<screen list>.
 
-import { captureUrl, decodeScreens, screensFromHash } from './handoff.js';
+import { captureUrl, decodeScreens, keyFromHash, screensFromHash } from './handoff.js';
 import { renderCalibration } from './pattern.js';
 import { joinCalibration } from './calibration-sync.js';
 
@@ -14,7 +14,8 @@ function parse() {
   try {
     const info = decodeScreens(text);
     const monitor = info.monitors.find((m) => m.n === n);
-    return monitor ? { monitor, count: info.monitors.length, text, qrText: captureUrl(location.origin, text) } : null;
+    const qrText = captureUrl(location.origin, text, keyFromHash(location.hash));
+    return monitor ? { monitor, count: info.monitors.length, text, qrText } : null;
   } catch {
     return null;
   }

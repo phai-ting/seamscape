@@ -55,6 +55,10 @@
 .gap-list { margin-top: 12px; border-top: 1px solid var(--rule); }
 .gap-figures { flex-basis: 100%; font-size: 14px; color: var(--ink-soft); }
 
+.live-status { margin: 4px 0 4px; font-size: 17px; font-weight: 650; }
+.live-status[data-kind="error"] { color: var(--error); }
+.live-note { margin: 0 0 18px; font-size: 14px; color: var(--ink-soft); max-width: 60ch; }
+
 .code {
   margin: 4px 0 18px; padding: 12px 0;
   border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);

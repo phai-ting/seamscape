@@ -30,22 +30,22 @@ export function rememberedScreens() {
   try { return sessionStorage.getItem(SESSION_KEY); } catch { return null; }
 }
 
-function windowUrl(n, screensText) {
-  return `calibrate.html#n=${n}&s=${screensText}`;
+function windowUrl(n, screensText, key) {
+  return `calibrate.html#n=${n}&s=${screensText}${key ? `&k=${key}` : ''}`;
 }
 
-function openWindow(n, screensText, screen) {
+function openWindow(n, screensText, key, screen) {
   const features = screen
     ? `popup,left=${screen.left},top=${screen.top},width=${screen.width},height=${screen.height}`
     : 'popup,width=960,height=600';
-  const w = window.open(windowUrl(n, screensText), `seamscape-calibration-${n}`, features);
+  const w = window.open(windowUrl(n, screensText, key), `seamscape-calibration-${n}`, features);
   if (w) windows.set(n, w);
   return !!w;
 }
 
 // One window per monitor, without placement (no Window Management API).
-export function openWindowFor(n, screensText) {
-  return openWindow(n, screensText, null);
+export function openWindowFor(n, screensText, key) {
+  return openWindow(n, screensText, key, null);
 }
 
 function sameScreen(a, b) {
@@ -81,7 +81,7 @@ function renderBlocked(o) {
     b.type = 'button';
     b.addEventListener('click', (e) => {
       e.stopPropagation();
-      openWindow(n, o.screensText, screen);
+      openWindow(n, o.screensText, o.key, screen);
       renderBlocked(o);
     });
     o.bar.append(b);
@@ -94,7 +94,7 @@ function renderBlocked(o) {
 // Fill this screen with its pattern and open a window on every other screen.
 // details: ScreenDetails; monitors: numbered as screensInNumberOrder(details).
 // Returns { fullscreen, blocked: [n] }.
-export async function openOnAllScreens(details, monitors, screensText) {
+export async function openOnAllScreens(details, monitors, screensText, key = null) {
   const ordered = screensInNumberOrder(details);
   const hereIndex = Math.max(0, ordered.findIndex((s) => sameScreen(s, details.currentScreen)));
   const here = monitors[hereIndex];
@@ -110,12 +110,12 @@ export async function openOnAllScreens(details, monitors, screensText) {
   root.append(canvas, bar);
   document.body.append(root);
   const o = {
-    el: root, bar, monitor: here, others, screensText, sync: null,
+    el: root, bar, monitor: here, others, screensText, key, sync: null,
     draw: () => {
       const state = renderCalibration(canvas, {
         monitor: here,
         count: monitors.length,
-        qrText: captureUrl(location.origin, screensText),
+        qrText: captureUrl(location.origin, screensText, key),
         full: document.fullscreenElement === root,
         others: o.sync?.available ? o.sync.states : null,
       });
@@ -143,7 +143,7 @@ export async function openOnAllScreens(details, monitors, screensText) {
     }
     for (const { n, screen } of others) {
       const w = windows.get(n);
-      if (!w || w.closed) openWindow(n, screensText, screen);
+      if (!w || w.closed) openWindow(n, screensText, key, screen);
     }
     o.draw();
     return fullscreen;

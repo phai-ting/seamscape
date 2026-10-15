@@ -27,11 +27,11 @@ Existing tools (Superpaper, DisplayFusion, GPU bezel correction) make users meas
 
 ## Capabilities and Constraints
 
-- Static site on Cloudflare Workers static assets; plain HTML/CSS/ES modules, no build step, no backend, no accounts.
+- Static site on Cloudflare Workers static assets; plain HTML/CSS/ES modules, no build step, no accounts. The only server code is the live-link relay, which cannot read what it relays.
 - Strict CSP: scripts, styles, and fonts only from the site itself; no third-party hosts. The phone page alone allows eval and WebAssembly for OpenCV.js.
 - The calibration photo and the user's picture never leave the device.
 - Camera calibration: the desktop shows a marker pattern on every monitor; the phone page (opened from a QR code) measures one photo with OpenCV.js and hands the layout back as a short typed code or a link. No server is involved.
-- Phase 3 (live relay between phone and desktop) is planned, not built.
+- Live link: when the phone has measured, the desktop page updates by itself through a relay in the same Worker. The relay passes on only end-to-end encrypted measurements (the key never reaches the server) and stores nothing; the code and link remain as the fallback.
 
 ## Brand Commitments
 
