@@ -884,7 +884,11 @@ async function init() {
   const detectStatus = $('#detect-status');
   if (!hasWindowManagement()) {
     $('#detect-btn').disabled = true;
-    setStatus(detectStatus, 'This browser can only see the screen this window is on. Add your other monitors by hand, or open Seamscape in Chrome or Edge to detect them.');
+    detectStatus.dataset.kind = 'notice';
+    detectStatus.replaceChildren(
+      el('strong', {}, 'This browser can only see the screen this window is on.'),
+      ' Add your other monitors by hand, or open Seamscape in Chrome or Edge to detect them.',
+    );
   }
 
   let profile = null;

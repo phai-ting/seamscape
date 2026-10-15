@@ -197,6 +197,12 @@ input[type="number"] { width: 6.5em; }
 .status:empty { min-height: 0; margin: 0; }
 .status[data-kind="ok"] { color: var(--ink); }
 .status[data-kind="error"] { color: var(--error); }
+/* A browser limit the user should act on: highlighted, not an error. */
+.status[data-kind="notice"] {
+  padding: 10px 14px; border-left: 3px solid var(--ink);
+  background: #fff6a3; color: var(--ink); max-width: 60ch;
+}
+.status[data-kind="notice"] strong { font-weight: 650; }
 
 /* ---------- monitor ticket ---------- */
 
