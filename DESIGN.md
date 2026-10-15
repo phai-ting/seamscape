@@ -10,6 +10,7 @@ colors:
   rule: "#111111"
   rule-soft: "#d4d4ce"
   field-line: "#85888c"
+  placeholder: "#707378"
   process-cyan: "#0089c7"
   process-magenta: "#d1006c"
   process-yellow: "#ffe500"
@@ -152,6 +153,7 @@ A restrained proof-room palette: warm off-white paper, near-black ink, and three
 - **Rule** (rule): the 1px structural hairlines between sections and steps.
 - **Rule Soft** (rule-soft): row dividers inside lists (ticket rows, gap rows, file lists).
 - **Field Line** (field-line): resting border of inputs and selects.
+- **Placeholder** (placeholder): example text inside empty inputs. Lighter than Ink Soft so it reads as a sample, dark enough for 4.5:1 on white.
 - **Error Red** (error-red): error status text only.
 
 ### Named Rules

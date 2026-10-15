@@ -20,6 +20,7 @@
   --rule: #111111;
   --rule-soft: #d4d4ce;
   --field-line: #85888c;
+  --placeholder: #707378;
   --cyan: #0089c7;
   --magenta: #d1006c;
   --yellow: #ffe500;
@@ -401,7 +402,7 @@ details.help p { margin-top: 8px; max-width: 60ch; }
 .code-form { margin-top: 4px; }
 .code-form label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
 #code-input { font-weight: 600; letter-spacing: 0.04em; }
-#code-input::placeholder { color: var(--ink-soft); font-weight: 500; }
+#code-input::placeholder { color: var(--placeholder); font-weight: 500; }
 #gaps-section #edge-list { margin-top: 18px; }
 
 /* ---------- calibration overlay (this screen's pattern) ---------- */
