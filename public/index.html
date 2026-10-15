@@ -5,129 +5,133 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Seamscape: wallpaper that lines up across your monitors</title>
   <meta name="description" content="Adjust your wallpaper for the gaps between your monitors so lines and horizons stay straight. Runs entirely in your browser.">
+  <link rel="preload" href="fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
-  <header class="site-header">
-    <h1>Seamscape</h1>
-    <p class="tagline">Wallpaper that lines up across your monitors, as if you were looking through a window.</p>
+  <div class="colorbar" aria-hidden="true">
+    <span class="c"></span><span class="m"></span><span class="y"></span><span class="k"></span>
+    <span class="c t5"></span><span class="m t5"></span><span class="y t5"></span><span class="k t5"></span>
+    <span class="r"></span><span class="g"></span><span class="b"></span><span class="k t2"></span>
+  </div>
+
+  <header class="masthead">
+    <div class="brand">
+      <p class="wordmark">Seamscape</p>
+      <p class="tagline">Wallpaper that lines up across your monitors, as if you were looking through a window.</p>
+    </div>
+    <p class="privacy">
+      <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="4" y="9" width="12" height="8" rx="1"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>
+      Your pictures never leave this computer
+    </p>
   </header>
 
-  <main>
-    <section id="screens-section" aria-labelledby="screens-h">
-      <h2 id="screens-h"><span class="step">1</span> Your screens</h2>
-      <p>
-        Seamscape reads your monitor setup from the browser. Check the list, then set each
-        monitor's size (the diagonal from its spec sheet).
-      </p>
-      <div class="row">
-        <button id="detect-btn" type="button" class="primary">Detect all screens</button>
-        <button id="add-btn" type="button">Add a monitor</button>
+  <main class="workspace">
+    <section id="screens-section" class="step" aria-labelledby="screens-h">
+      <h2 id="screens-h"><span class="num">1</span>Screens</h2>
+      <p class="lede">Check your monitors, then set each one's diagonal from its spec sheet.</p>
+      <div class="actions">
+        <button id="detect-btn" type="button" class="btn">Detect all screens</button>
+        <button id="add-btn" type="button" class="btn btn-quiet">Add a monitor</button>
       </div>
       <p id="detect-status" class="status" role="status"></p>
-      <div class="table-wrap">
-        <table id="monitor-table">
-          <thead>
-            <tr>
-              <th scope="col">#</th>
-              <th scope="col">Primary</th>
-              <th scope="col">Resolution (px)</th>
-              <th scope="col">Position on desktop (px)</th>
-              <th scope="col">Diagonal (in)</th>
-              <th scope="col">Picture size</th>
-              <th scope="col"><span class="sr-only">Remove</span></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <div id="monitor-list" class="monitor-list" role="table" aria-label="Monitors"></div>
       <details class="help">
         <summary>What are these numbers?</summary>
         <p>
-          <b>Resolution</b> is the monitor's native resolution. <b>Position</b> is where the
-          monitor sits in your OS display settings, in native pixels, with the primary
-          monitor at 0, 0. Monitors to the left of or above the primary have negative values.
-          On Chrome and Edge, "Detect all screens" fills these in for you.
+          <b>Resolution</b> is the monitor's native resolution. <b>Position</b> is where it sits
+          in your OS display settings, in native pixels, with the primary monitor at 0, 0.
+          Monitors left of or above the primary have negative values. In Chrome and Edge,
+          "Detect all screens" fills these in for you.
         </p>
       </details>
     </section>
 
-    <section id="gaps-section" aria-labelledby="gaps-h">
-      <h2 id="gaps-h"><span class="step">2</span> Gaps between screens</h2>
-      <p>
-        With a ruler, measure from the edge of the lit picture on one screen to the edge of
-        the lit picture on the next. This includes both bezels and any space between the
-        monitors. All values are in millimetres (1 inch = 25.4 mm).
+    <section id="gaps-section" class="step" aria-labelledby="gaps-h">
+      <h2 id="gaps-h"><span class="num">2</span>Gaps</h2>
+      <p class="lede">
+        With a ruler, measure from the edge of the lit picture on one screen to the edge of the
+        lit picture on the next: both bezels plus any space between. Millimetres; 1 inch = 25.4 mm.
       </p>
-      <div class="row">
-        <label>Set every gap to
-          <input id="all-gaps" type="number" min="0" step="0.5" value="20" inputmode="decimal"> mm
+      <div class="actions">
+        <label class="inline-field">Every gap
+          <span class="unit-input"><input id="all-gaps" type="number" min="0" step="0.5" value="20" inputmode="decimal"><span>mm</span></span>
         </label>
-        <button id="all-gaps-btn" type="button">Apply</button>
-        <button id="reset-edges-btn" type="button">Reset offsets from desktop arrangement</button>
+        <button id="all-gaps-btn" type="button" class="btn btn-quiet">Apply</button>
+        <button id="reset-edges-btn" type="button" class="btn btn-quiet">Reset offsets</button>
       </div>
       <div id="edge-list"></div>
     </section>
 
-    <section id="picture-section" aria-labelledby="picture-h">
-      <h2 id="picture-h"><span class="step">3</span> Picture</h2>
-      <div class="row">
-        <label class="file-btn">
-          <input id="image-input" type="file" accept="image/*">
-          <span>Choose a picture…</span>
-        </label>
-        <button id="pattern-btn" type="button">Use test pattern</button>
-        <label class="zoom">Zoom
-          <input id="zoom" type="range" min="1" max="8" step="0.01" value="1">
-        </label>
-        <button id="reset-view-btn" type="button">Reset position</button>
+    <section id="picture-section" class="sheet-section" aria-labelledby="picture-h">
+      <div class="sheet-bar">
+        <h2 id="picture-h"><span class="num">3</span>Picture</h2>
+        <div class="sheet-tools">
+          <label class="btn file-btn">
+            <input id="image-input" type="file" accept="image/*">
+            <span>Choose a picture</span>
+          </label>
+          <button id="pattern-btn" type="button" class="btn btn-quiet">Test pattern</button>
+          <label class="switch"><input id="guides-toggle" type="checkbox"><span>Guides</span></label>
+          <label class="zoom">Zoom
+            <input id="zoom" type="range" min="1" max="8" step="0.01" value="1">
+          </label>
+          <button id="reset-view-btn" type="button" class="btn btn-quiet">Reset</button>
+        </div>
+      </div>
+      <div class="sheet" id="drop-zone">
+        <canvas id="preview" aria-label="Proof of the wallpaper across your monitors"></canvas>
+        <p class="slug" id="slug"></p>
       </div>
       <p id="image-status" class="status" role="status"></p>
-      <div class="preview-wrap" id="drop-zone">
-        <canvas id="preview" aria-label="Preview of the wallpaper across your monitors"></canvas>
-      </div>
-      <p class="hint">Drag to move the picture, scroll to zoom. Dimmed areas fall behind bezels and gaps and won't be shown. You can also drop a picture here.</p>
+      <p class="hint">Drag to move the picture, scroll to zoom, or drop a picture on the sheet. The faint picture outside each screen is the part your bezels and gaps will hide.</p>
     </section>
 
-    <section id="download-section" aria-labelledby="download-h">
-      <h2 id="download-h"><span class="step">4</span> Download</h2>
-      <fieldset class="row">
+    <section id="download-section" class="step" aria-labelledby="download-h">
+      <h2 id="download-h"><span class="num">4</span>Download</h2>
+      <fieldset class="os-pick">
         <legend>Files for</legend>
-        <label><input type="checkbox" name="os" value="windows"> Windows</label>
-        <label><input type="checkbox" name="os" value="macos"> macOS</label>
-        <label><input type="checkbox" name="os" value="linux"> Linux</label>
+        <label class="check"><input type="checkbox" name="os" value="windows"><span>Windows</span></label>
+        <label class="check"><input type="checkbox" name="os" value="macos"><span>macOS</span></label>
+        <label class="check"><input type="checkbox" name="os" value="linux"><span>Linux</span></label>
       </fieldset>
-      <div class="row">
-        <label>Format
+      <div class="actions">
+        <label class="inline-field">Format
           <select id="format">
-            <option value="png">PNG (best quality)</option>
-            <option value="jpg">JPEG (smaller files)</option>
+            <option value="png">PNG, best quality</option>
+            <option value="jpg">JPEG, smaller files</option>
           </select>
         </label>
-        <button id="download-btn" type="button" class="primary">Download ZIP</button>
+        <button id="download-btn" type="button" class="btn btn-primary">
+          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 16.5h12"/></svg>
+          Download ZIP
+        </button>
       </div>
       <p id="download-status" class="status" role="status"></p>
     </section>
+  </main>
 
+  <div class="after">
     <section id="apply-section" aria-labelledby="apply-h">
-      <h2 id="apply-h"><span class="step">5</span> Set it as your wallpaper</h2>
-      <p class="muted">The same steps are in HOW-TO-APPLY.txt inside the ZIP.</p>
+      <h2 id="apply-h"><span class="num">5</span>Set it as your wallpaper</h2>
+      <p class="lede">The same steps are in HOW-TO-APPLY.txt inside the ZIP.</p>
       <div id="apply-guides"></div>
     </section>
 
     <section id="profile-section" aria-labelledby="profile-h">
       <h2 id="profile-h">Save this layout</h2>
-      <p>Bookmark this link to skip setup next time. Your layout is stored in the link itself.</p>
-      <div class="row">
+      <p class="lede">Bookmark this link to skip setup next time. The layout lives in the link itself.</p>
+      <div class="link-row">
         <input id="profile-link" type="text" readonly aria-label="Link to this layout">
-        <button id="copy-btn" type="button">Copy link</button>
+        <button id="copy-btn" type="button" class="btn">Copy link</button>
       </div>
     </section>
-  </main>
+  </div>
 
-  <footer class="site-footer">
-    <p>Your pictures never leave your computer: everything runs in this browser tab.</p>
+  <footer class="colophon">
+    <p>Seamscape runs entirely in this browser tab. Nothing you add is uploaded.</p>
+    <p>Set in Archivo by Omnibus-Type, SIL Open Font License.</p>
   </footer>
 </body>
 </html>
