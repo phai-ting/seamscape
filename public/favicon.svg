@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Seamscape: three monitor panes in registration ink on proof paper,
+       crossed by one straight band of light that runs unbroken through the gaps. -->
+  <rect width="32" height="32" rx="3" fill="#f7f7f4"/>
+  <rect x="2.5" y="8" width="8" height="16" fill="#111111"/>
+  <rect x="12" y="6.5" width="8" height="19" fill="#111111"/>
+  <rect x="21.5" y="8" width="8" height="16" fill="#111111"/>
+  <path d="M1 24.5 L31 10.5" stroke="#f7f7f4" stroke-width="3.2"/>
+</svg>
