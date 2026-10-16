@@ -264,6 +264,14 @@ details.help p { margin-top: 8px; max-width: 60ch; }
 .edge-fields { grid-column: 2; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--ink-soft); }
 .edge-fields label { display: inline-flex; align-items: center; gap: 8px; }
 .edge-fields input { width: 5.5em; color: var(--ink); }
+.edge-fields input.just-changed {
+  border-color: var(--ink);
+  animation: just-changed 4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes just-changed {
+  0%, 55% { background: var(--yellow); }
+  100% { background: var(--white); }
+}
 .empty-note { padding: 12px 0; color: var(--ink-soft); }
 
 /* ---------- proof sheet ---------- */
@@ -396,6 +404,7 @@ details.help p { margin-top: 8px; max-width: 60ch; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+  .edge-fields input.just-changed { animation: none; background: var(--yellow); }
 }
 
 /* ---------- gaps: measuring methods ---------- */

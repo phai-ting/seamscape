@@ -233,6 +233,47 @@ function applyProfile(profile) {
   updateDerived();
 }
 
+// ---------- arrival of a measured layout ----------
+
+const CHANGED_MS = 4000;
+const baseTitle = document.title;
+
+// Apply a layout measured by the phone and make its arrival hard to miss:
+// the changed gap values light up in yellow, the Gaps step scrolls into view,
+// and a background tab says so in its title.
+function receiveMeasured(profile) {
+  const before = new Map(state.edges.map((e) => [edgeKey(e), e]));
+  applyProfile(profile);
+
+  for (const e of state.edges) {
+    const prev = before.get(edgeKey(e));
+    const row = [...document.querySelectorAll('.edge')].find((r) => r.dataset.key === edgeKey(e));
+    for (const field of ['gap', 'shift']) {
+      if (prev && round1(prev[field]) === round1(e[field])) continue;
+      const input = row?.querySelector(`[data-field="${field}"]`);
+      if (!input) continue;
+      input.classList.add('just-changed');
+      setTimeout(() => input.classList.remove('just-changed'), CHANGED_MS);
+    }
+  }
+
+  const gaps = $('#gaps-section');
+  const { top, bottom } = gaps.getBoundingClientRect();
+  if (top < 0 || bottom > window.innerHeight) {
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    gaps.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  if (document.hidden) {
+    document.title = `Layout received · ${baseTitle}`;
+    document.addEventListener('visibilitychange', function restore() {
+      if (document.hidden) return;
+      document.title = baseTitle;
+      document.removeEventListener('visibilitychange', restore);
+    });
+  }
+}
+
 // ---------- live link (Phase 3) ----------
 
 let relay = null;
@@ -260,7 +301,7 @@ async function startLiveLink(key, screensText) {
       try {
         const value = await unseal(key, msg.box);
         if (!value || value.s !== screensText) throw new Error('not this calibration');
-        applyProfile(decodeProfile(value.p));
+        receiveMeasured(decodeProfile(value.p));
         current.send({ type: 'received' });
         closeCalibration();
         $('#calibrate-close-btn').hidden = true;
@@ -342,7 +383,7 @@ function loadCode(e) {
       if (!screens) throw new Error('This tab did not show the calibration screens, so it cannot read a code. Show them here and measure again, or open the link from your phone.');
       profile = decodeCode(text, screens);
     }
-    applyProfile(profile);
+    receiveMeasured(profile);
     closeCalibration();
     $('#calibrate-close-btn').hidden = true;
     $('#code-input').value = '';
